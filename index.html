@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-　　<meta name="robots" content="noindex"> 
+    <meta name="robots" content="noindex"> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>複数パターン画像クリエイター with Nano Banana</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -89,12 +89,6 @@
             background-color: #ffffff;
             color: #000;
         }
-
-        /* ペーストエリア用 */
-        .paste-box:empty:before {
-            content: attr(data-placeholder);
-            color: #9ca3af;
-        }
     </style>
 </head>
 <body class="p-4 md:p-8 lg:p-12 relative">
@@ -142,27 +136,12 @@
                         </button>
                     </div>
                     
-                    <div id="dropZone" class="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center cursor-pointer hover:border-amber-400 hover:bg-gray-800/50 transition-all mb-4 group relative">
-                        <!-- PDFを追加 -->
-                        <input type="file" id="fileInput" class="hidden" accept=".pptx,.pdf,.png,.jpg,.jpeg" multiple>
-                        <i data-lucide="upload-cloud" class="w-12 h-12 mx-auto text-gray-500 mb-3 group-hover:text-amber-400 transition-colors"></i>
-                        <p class="text-base text-gray-300 font-bold group-hover:text-white transition-colors">スライド / PDF / テキスト画像をドロップ</p>
-                        <p class="text-xs text-gray-500 mt-2">クリックしてファイルを選択</p>
-                        <div id="fileList" class="hidden absolute inset-0 bg-gray-900/95 rounded-2xl flex items-center justify-center flex-col p-4 text-sm text-gray-300 z-10"></div>
-                    </div>
-
-                    <!-- スマホ用ペーストエリア -->
-                    <div class="mb-6">
-                        <div id="pasteInput" contenteditable="true" data-placeholder="ここをタップして画像を貼り付け (Paste)" class="paste-box w-full bg-gray-800 border border-gray-600 rounded-xl p-3 text-sm text-white focus:border-amber-500 focus:outline-none min-h-[50px] flex items-center justify-center cursor-text transition-colors hover:bg-gray-700 overflow-hidden whitespace-nowrap"></div>
-                        <p class="text-[10px] text-gray-500 mt-1 text-center">※スマホの場合は長押しメニューから「貼り付け」を選択</p>
-                    </div>
-
                     <!-- シチュエーション入力エリア -->
                     <div class="mb-6">
                         <label class="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wide flex items-center gap-2">
                             <i data-lucide="message-square" class="w-3 h-3 text-amber-400"></i> 具体的なシチュエーション・補足
                         </label>
-                        <textarea id="manualText" rows="4" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-base text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-gray-600 transition-all mb-3" placeholder="例：歩く、走る、電話をする、転ぶ、巴投げ、凧揚げ、バナナをむく、かめはめ波"></textarea>
+                        <textarea id="manualText" rows="6" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-base text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-gray-600 transition-all mb-3" placeholder="例１：歩く、走る、電話をする、転ぶ、巴投げ、凧揚げ、バナナをむく、かめはめ波&#10;例２：高校生が友達と２人で口論している&#10;例３：桶狭間の戦いで織田信長が勝利した場面"></textarea>
                     </div>
                 </div>
             </div>
@@ -271,7 +250,7 @@
                         </div>
                         <div class="relative flex-grow overflow-hidden">
                             <pre id="promptResult" class="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed font-mono h-full overflow-y-auto scrollbar-hide pr-2">ここに生成されたプロンプトが表示されます。
-ファイルを選択するか、テキストを入力して「①プロンプト生成」を押してください。</pre>
+テキストを入力して「①プロンプト生成」を押してください。</pre>
                         </div>
                     </div>
                     
@@ -305,7 +284,6 @@
             { id: 'photo', icon: 'camera', label: '超リアル写真', desc: '8K解像度の実写スタイル。映画のようなライティングと質感。', prompt: '超リアルな写真、8k解像度、映画のようなライティング、35mmレンズで撮影、高精細な質感、フォトリアリスティック' },
             { id: 'anime', icon: 'tv', label: '日本のアニメ', desc: 'セル画調の鮮やかな色彩とキャラクターデザイン。', prompt: '日本のアニメスタイル、セルシェーディング、鮮やかな色彩、スタジオジブリ風、高品質なアニメーションアート、繊細な背景美術' },
             { id: 'watercolor', icon: 'droplet', label: '水彩画', desc: '滲みやグラデーションが美しい、芸術的な水彩スタイル。', prompt: '水彩画、柔らかいエッジ、ウェット・オン・ウェット技法、芸術的な絵具の滲み、淡い色彩、透明感のある着彩' },
-            // サイバーパンク(cyber)を削除しました
             { id: '3d', icon: 'box', label: '3Dキャラ/トイ', desc: 'ピクサーのような可愛らしく質感のある3Dレンダリング。', prompt: '3Dキャラクターレンダリング、ピクサー風、かわいいプロポーション、粘土の質感、ソフトなスタジオライティング、オクタンレンダリング' },
             { id: 'pixel', icon: 'grid', label: 'ドット絵', desc: 'レトロゲームのようなピクセルアート。', prompt: 'ドット絵、16ビットレトロゲームスタイル、ディザリング、限定されたカラーパレット、ノスタルジックな美学、ピクセルアート' },
             { id: 'ukiyo', icon: 'mountain', label: '浮世絵風', desc: '和紙の質感と日本画の構図を取り入れた伝統的スタイル。', prompt: '浮世絵スタイル、木版画の質感、日本の伝統芸術、和紙のテクスチャ、太い輪郭線、フラットな遠近法、淡い和の色合い' },
@@ -318,7 +296,7 @@
         let gridCount = 4; // 初期値は4分割
         let textMode = 'off'; // デフォルトは「文字なし」
         let bgMode = 'on'; // デフォルトは「背景あり」
-        let selectedFiles = [];
+        let selectedFiles = []; // 変数としては残しておくがファイルは追加されない
 
         // --- Init UI ---
         const styleGrid = document.getElementById('styleGrid');
@@ -450,124 +428,6 @@
             setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
         }
 
-        // --- File Handling ---
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const fileListDisplay = document.getElementById('fileList');
-        const pasteInput = document.getElementById('pasteInput');
-
-        dropZone.onclick = () => fileInput.click();
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-amber-400');
-        });
-        
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-amber-400');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-amber-400');
-            handleFiles(e.dataTransfer.files);
-        });
-
-        fileInput.addEventListener('change', () => {
-            handleFiles(fileInput.files);
-        });
-
-        // 共通のファイルリスト更新処理
-        function updateFileListUI() {
-            if (selectedFiles.length > 0) {
-                // ファイル名チップの作成
-                const chips = selectedFiles.map(f => 
-                    `<span class="bg-gray-800 text-[10px] px-2 py-1 rounded border border-gray-600 truncate max-w-[120px] text-gray-300">${f.name}</span>`
-                ).join('');
-
-                fileListDisplay.innerHTML = `
-                    <i data-lucide="check-circle" class="w-8 h-8 text-green-400 mb-2"></i>
-                    <span class="font-bold text-white text-base">${selectedFiles.length}個のファイル</span>
-                    <span class="text-xs text-gray-400 mb-2">クリックしてリセット</span>
-                    <div class="flex flex-wrap gap-1 justify-center w-full max-h-[80px] overflow-y-auto px-2">
-                        ${chips}
-                    </div>
-                `;
-                fileListDisplay.classList.remove('hidden');
-                lucide.createIcons();
-            } else {
-                fileListDisplay.classList.add('hidden');
-            }
-        }
-
-        function handleFiles(files) {
-            if (files.length > 0) {
-                selectedFiles = Array.from(files); // 上書きモード（Input/Drop時）
-                updateFileListUI();
-            }
-        }
-
-        // Paste Handling (Global + Specific Area)
-        const handlePaste = (items) => {
-            let addedCount = 0;
-            let foundImage = false;
-            
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    const blob = items[i].getAsFile();
-                    const fileName = `pasted_image_${Date.now()}_${addedCount}.png`;
-                    const file = new File([blob], fileName, { type: blob.type });
-                    
-                    selectedFiles.push(file);
-                    addedCount++;
-                    foundImage = true;
-                }
-            }
-            
-            if (foundImage) {
-                updateFileListUI();
-                showToast(`${addedCount}枚の画像を貼り付けました`);
-                // ペーストエリアのリセットとフォーカス解除（スマホキーボードを閉じるため）
-                if (document.activeElement === pasteInput) {
-                    pasteInput.blur();
-                    pasteInput.innerHTML = "";
-                }
-            }
-        };
-
-        // グローバルペースト
-        document.addEventListener('paste', (e) => {
-            // ペーストエリアにフォーカスがある場合は重複処理を避けるため無視
-            if (e.target === pasteInput || pasteInput.contains(e.target)) {
-                return;
-            }
-
-            // ペーストエリア以外でのペーストも拾う（デスクトップ利便性のため）
-            if (e.clipboardData && e.clipboardData.items) {
-                handlePaste(e.clipboardData.items);
-            }
-        });
-
-        // 専用ペーストエリアの処理
-        pasteInput.addEventListener('paste', (e) => {
-            e.preventDefault(); // デフォルトの貼り付け（divへのimgタグ挿入など）を防ぐ
-            e.stopPropagation(); // イベントのバブリングを止める（グローバルリスナーへの伝播防止）
-            
-            if (e.clipboardData && e.clipboardData.items) {
-                handlePaste(e.clipboardData.items);
-            }
-        });
-
-        // ペーストエリアでのエンターキー無効化
-        pasteInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                pasteInput.blur();
-            }
-        });
-
-
         // --- Processing Logic ---
         document.getElementById('processBtn').onclick = async () => {
             const manualText = document.getElementById('manualText').value;
@@ -578,7 +438,7 @@
 
             // Validation
             if (selectedFiles.length === 0 && !manualText.trim()) {
-                showToast("エラー: ファイルまたはテキストを入力してください");
+                showToast("エラー: テキストを入力してください");
                 return;
             }
 
@@ -916,21 +776,12 @@ ${bgGuideline}
             document.body.removeChild(textArea);
         }
 
-        // ③Chatボタンのハンドリング: window.openを使用
-        // 不要なJSイベントリスナーを削除 (Aタグのhref属性で遷移するため)
-        /* document.getElementById('openChatBtn').onclick = () => {
-            window.open('https://gemini.google.com/', '_blank');
-        };
-        */
-
         // --- NEW Soft Reset Function ---
         function resetApp() {
             // Reset Variables
             selectedFiles = [];
-            document.getElementById('fileInput').value = '';
-            document.getElementById('pasteInput').innerHTML = '';
             document.getElementById('manualText').value = '';
-            document.getElementById('promptResult').textContent = 'ここに生成されたプロンプトが表示されます。\nファイルを選択するか、テキストを入力して「①プロンプト生成」を押してください。';
+            document.getElementById('promptResult').textContent = 'ここに生成されたプロンプトが表示されます。\nテキストを入力して「①プロンプト生成」を押してください。';
 
             // Reset States
             selectStyle(styles[0]); // Irasutoya
@@ -938,7 +789,6 @@ ${bgGuideline}
             setCharMode('diverse');
             setTextMode('off');
             setBgMode('on');
-            updateFileListUI();
 
             showToast("リセットしました");
         }
