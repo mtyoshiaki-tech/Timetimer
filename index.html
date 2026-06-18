@@ -119,8 +119,8 @@ animation: pulse-red 1.5s infinite;
 
 <!-- 右側：メインビジュアルタイマー画面（高さと幅の比率を考慮したレスポンシブ設計） -->
 <div class="flex-1 w-full flex flex-col items-center justify-center p-2">
-<!-- タイマー開始時に上部に小さく表示されるコンパクトなリング数切替バー -->
-<div id="active-ring-selector" class="hidden mb-4 bg-zinc-900/90 border border-zinc-800/80 rounded-full p-1 items-center space-x-1 shadow-2xl z-30 transition-all duration-300">
+<!-- タイマー開始時に上部に小さく表示されるコンパクトなリング数切替バー（重なりによる無効化を防ぐため、relativeとz-50を指定） -->
+<div id="active-ring-selector" class="hidden relative mb-4 bg-zinc-900/90 border border-zinc-800/80 rounded-full p-1 items-center space-x-1 shadow-2xl z-50 pointer-events-auto transition-all duration-300">
 <button onclick="setRingCount(1)" id="btn-active-ring-1" class="px-4 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow">一重</button>
 <button onclick="setRingCount(2)" id="btn-active-ring-2" class="px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">二重</button>
 <button onclick="setRingCount(3)" id="btn-active-ring-3" class="px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">三重</button>
@@ -284,7 +284,7 @@ osc.start(noteTime);
 osc.stop(noteTime + 0.19);
 }
 } else if (type === 'spring') {
-// --- 春 of 朝をイメージした爽やかでリズミカルな音楽（120 BPM マリンバ/ベル風） ---
+// --- 春の朝をイメージした爽やかでリズミカルな音楽（120 BPM マリンバ/ベル風） ---
 const tempo = 120; // BPM
 const beatDuration = 60 / tempo; // 1拍 = 0.5秒
 
@@ -415,41 +415,11 @@ let isFinished = false; // アラーム作動状態
 let animationFrameId = null; // requestAnimationFrame用ID
 let lastTimestamp = 0; // ループ制御用タイムスタンプ
 let ringCount = 1; // 1: 一重, 2: 二重, 3: 三重
-let worker = null; // バックグラウンド処理用のWeb Worker
 
 // SVGリングの基本パラメータ
 const rOuter = 175;
 const rMiddle = 145;
 const rInner = 115;
-
-// Web Workerの初期化（インラインBlobを使用してシングルファイル内にPWA互換のバックグラウンドスレッドを形成）
-function initWorker() {
-const workerCode = `
-let timer = null;
-self.onmessage = function(e) {
-if (e.data.action === 'start') {
-const endTime = e.data.endTime;
-if (timer) clearInterval(timer);
-timer = setInterval(() => {
-if (Date.now() >= endTime) {
-self.postMessage({ action: 'complete' });
-clearInterval(timer);
-}
-}, 200);
-} else if (e.data.action === 'stop') {
-if (timer) clearInterval(timer);
-}
-};
-`;
-const blob = new Blob([workerCode], { type: 'application/javascript' });
-const workerUrl = URL.createObjectURL(blob);
-worker = new Worker(workerUrl);
-worker.onmessage = function(e) {
-if (e.data.action === 'complete') {
-timerComplete();
-}
-};
-}
 
 // 初期設定
 function initApp() {
@@ -459,51 +429,11 @@ populateSelectOptions();
 // 文字盤目盛りの描画
 drawDialTicks();
 
-// バックグラウンドWorkerの起動
-initWorker();
-
-// 保存されたセッションの復元チェック (GitHub Pages等で閉じられた時の時間・セッションリカバリー処理)
-const savedEnd = localStorage.getItem('timer_end_time');
-if (savedEnd) {
-const endTime = parseInt(savedEnd, 10);
-const now = Date.now();
-
-// 状態を復元
-totalDurationSeconds = parseInt(localStorage.getItem('timer_total_seconds') || '600', 10);
-ringCount = parseInt(localStorage.getItem('timer_ring_count') || '1', 10);
-soundSelect.value = localStorage.getItem('timer_sound_select') || 'chime';
-setRingCount(ringCount);
-
-if (now >= endTime) {
-// 閉じている間に既に終了していた場合
-remainingSeconds = 0;
-isFinished = true;
-updateTimerVisuals();
-timerComplete();
-} else {
-// まだ実行中の場合：シームレスに再開
-remainingSeconds = (endTime - now) / 1000;
-isRunning = true;
-isFinished = false;
-startBtnText.textContent = "一時停止";
-startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-amber-950/80 border border-amber-800/80 flex flex-col items-center justify-center text-amber-500 hover:bg-amber-900 transition active:scale-95 focus:outline-none";
-
-disableSelectControls();
-updateScheduledTime();
-updateTimerVisuals();
-updateControlPanelVisibility();
-
-worker.postMessage({ action: 'start', endTime: endTime });
-lastTimestamp = performance.now();
-animationFrameId = requestAnimationFrame((timestamp) => runTimerAnimation(timestamp, endTime));
-}
-} else {
-// 通常の新規初期同期
+// 初期同期
 syncSelectsToDuration();
 updateRingDisplay();
 updateTimerVisuals();
 updateControlPanelVisibility();
-}
 
 // イベントリスナーの登録
 selectHours.addEventListener('change', handleInputChange);
@@ -849,12 +779,19 @@ resetTimer();
 }
 }
 
-// 高精度アニメーションループ用 (requestAnimationFrame、誤差補正にDate.now()タイムスタンプを使用)
-function runTimerAnimation(timestamp, endTime) {
+// 高精度アニメーションループ用 (requestAnimationFrame)
+function runTimerAnimation(timestamp) {
 if (!isRunning) return;
 
-const now = Date.now();
-remainingSeconds = (endTime - now) / 1000;
+if (!lastTimestamp) {
+lastTimestamp = timestamp;
+}
+
+// 経過時間を秒単位で計算（完全に滑らかな時間計算）
+const elapsed = (timestamp - lastTimestamp) / 1000;
+lastTimestamp = timestamp;
+
+remainingSeconds -= elapsed;
 
 if (remainingSeconds <= 0) {
 remainingSeconds = 0;
@@ -862,18 +799,13 @@ updateTimerVisuals();
 timerComplete();
 } else {
 updateTimerVisuals();
-animationFrameId = requestAnimationFrame((t) => runTimerAnimation(t, endTime));
+animationFrameId = requestAnimationFrame(runTimerAnimation);
 }
 }
 
 // タイマー開始・一時停止のトグル
 function toggleTimer() {
 initAudio();
-
-// システムプッシュ通知の権限リクエスト
-if (Notification.permission === 'default') {
-Notification.requestPermission();
-}
 
 if (isRunning) {
 // 一時停止処理
@@ -885,12 +817,7 @@ isRunning = false;
 startBtnText.textContent = "再開";
 startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none";
 
-// Workerおよび永続化終了タイムスタンプの破棄
-if (worker) {
-worker.postMessage({ action: 'stop' });
-}
-localStorage.removeItem('timer_end_time');
-
+// プルダウンのロック解除
 enableSelectControls();
 updateScheduledTime();
 updateTimerVisuals();
@@ -912,22 +839,9 @@ updateScheduledTime();
 updateTimerVisuals();
 updateControlPanelVisibility();
 
-// バックグラウンド復帰用の絶対エポック時間の設定と永続化
-const endTime = Date.now() + remainingSeconds * 1000;
-localStorage.setItem('timer_end_time', endTime.toString());
-localStorage.setItem('timer_total_seconds', totalDurationSeconds.toString());
-localStorage.setItem('timer_ring_count', ringCount.toString());
-localStorage.setItem('timer_sound_select', soundSelect.value);
-
-// Web Worker経由でバックグラウンドスレッド時間追跡を開始
-if (!worker) {
-initWorker();
-}
-worker.postMessage({ action: 'start', endTime: endTime });
-
 // アニメーションループを開始
 lastTimestamp = performance.now();
-animationFrameId = requestAnimationFrame((timestamp) => runTimerAnimation(timestamp, endTime));
+animationFrameId = requestAnimationFrame(runTimerAnimation);
 }
 }
 
@@ -950,18 +864,12 @@ selectMinutes.classList.remove('opacity-50', 'cursor-not-allowed');
 selectSeconds.classList.remove('opacity-50', 'cursor-not-allowed');
 }
 
-// タイマー完了（無限アラームの開始フェーズ、通知送信処理を実装）
+// タイマー完了（無限アラームの開始フェーズ）
 function timerComplete() {
 if (animationFrameId) {
 cancelAnimationFrame(animationFrameId);
 animationFrameId = null;
 }
-if (worker) {
-worker.postMessage({ action: 'stop' });
-}
-// 正常終了のためセッションキーをクリア
-localStorage.removeItem('timer_end_time');
-
 isRunning = false;
 isFinished = true;
 
@@ -974,26 +882,12 @@ startAlarmLoop(soundSelect.value);
 toastMessage.classList.remove('translate-y-10', 'opacity-0');
 toastMessage.classList.add('translate-y-0', 'opacity-100');
 updateControlPanelVisibility();
-
-// システムプッシュ通知の送信（ブラウザがバックグラウンド時や端末スリープ時に、タップで即座にアプリを開かせるためのフック）
-if (Notification.permission === 'granted') {
-const notification = new Notification("VISUAL TIMER", {
-body: "設定時間が経過しました！タップしてアプリを開き、アラームを停止してください。",
-icon: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f97316'><path d='M12 22c5.523 0 10-4.577 10-10S17.523 2 12 2 2 6.577 2 12s4.523 10 10 10z'/></svg>",
-requireInteraction: true // ユーザーが明示的にアクションするまで通知を表示し続ける
-});
-notification.onclick = function() {
-window.focus(); // クリック時にブラウザタブを強制フォーカス/起動
-this.close();
-};
-}
 }
 
 // アラームを停止して通常画面に戻る
 function stopTimerAndAlarm() {
 stopAlarmLoop();
 isFinished = false;
-localStorage.removeItem('timer_end_time');
 
 toastMessage.classList.remove('translate-y-0', 'opacity-100');
 toastMessage.classList.add('translate-y-10', 'opacity-0');
@@ -1008,10 +902,6 @@ cancelAnimationFrame(animationFrameId);
 animationFrameId = null;
 }
 stopAlarmLoop();
-if (worker) {
-worker.postMessage({ action: 'stop' });
-}
-localStorage.removeItem('timer_end_time');
 
 isRunning = false;
 isFinished = false;
