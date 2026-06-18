@@ -1,949 +1,1016 @@
 <!DOCTYPE html>
 <html lang="ja" class="h-full">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>タイムタイマー</title>
-<!-- Tailwind CSS CDN -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- Lucide Icons -->
-<script src="https://unpkg.com/lucide@latest"></script>
-<style>
-/* スムーズなアニメーション用のカスタムスタイル（不要なCSSトランジションを削除してシームレスな動的描画に特化） */
-.circle-ring {
-transform-origin: 50% 50%;
-}
-/* 極太フォントの調整 */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@200;400;700&display=swap');
-.font-mono-custom {
-font-family: 'JetBrains Mono', monospace, sans-serif;
-}
-/* アラーム鳴動中の停止ボタン点滅アニメーション */
-@keyframes pulse-red {
-0%, 100% {
-transform: scale(1);
-box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-}
-50% {
-transform: scale(1.05);
-box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0);
-}
-}
-.animate-pulse-red {
-animation: pulse-red 1.5s infinite;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ビジュアル タイムタイマー</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* スムーズなアニメーション用のカスタムスタイル（不要なCSSトランジションを削除してシームレスな動的描画に特化） */
+        .circle-ring {
+            transform-origin: 50% 50%;
+        }
+        /* 極太フォントの調整 */
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@200;400;700&display=swap');
+        .font-mono-custom {
+            font-family: 'JetBrains Mono', monospace, sans-serif;
+        }
+        /* アラーム鳴動中の停止ボタン点滅アニメーション */
+        @keyframes pulse-red {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0);
+            }
+        }
+        .animate-pulse-red {
+            animation: pulse-red 1.5s infinite;
+        }
+    </style>
 </head>
 <body class="bg-black text-white h-full flex flex-col font-sans select-none overflow-hidden">
 
-<!-- メメインコンテンツ -->
-<main class="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 lg:p-8 gap-6 lg:gap-12 overflow-y-auto">
-
-<!-- 左側：コントロールパネル（設定） -->
-<div id="control-panel" class="w-full lg:w-[380px] bg-zinc-900/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-800 flex flex-col gap-6 shadow-2xl shrink-0">
-<div>
-<h2 class="text-lg font-bold text-zinc-300 mb-1">タイマー設定</h2>
-<p id="panel-desc" class="text-xs text-zinc-500">直感的なマルチレイヤーリングで時間を管理します。</p>
-</div>
-
-<!-- 時間設定 -->
-<div id="section-time-setup" class="space-y-4">
-<div class="flex justify-between text-sm text-zinc-400 font-medium">
-<span>設定時間</span>
-<span id="target-time-display" class="text-orange-500 font-bold">10分 00秒</span>
-</div>
-
-<!-- 時間(H)/分(M)/秒(S) のプルダウン選択 -->
-<div class="grid grid-cols-3 gap-2">
-<div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
-<label class="block text-[10px] text-zinc-500 mb-1">時間</label>
-<select id="select-hours" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
-<!-- JSで動的に追加 (0-23) -->
-</select>
-</div>
-<div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
-<label class="block text-[10px] text-zinc-500 mb-1">分</label>
-<select id="select-minutes" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
-<!-- JSで動的に追加 (0-59) -->
-</select>
-</div>
-<div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
-<label class="block text-[10px] text-zinc-500 mb-1">秒</label>
-<select id="select-seconds" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
-<!-- JSで動的に追加 (0-59) -->
-</select>
-</div>
-</div>
-
-<!-- クイックプリセット -->
-<div class="flex flex-wrap gap-1.5 mt-2">
-<button id="preset-1" onclick="setPreset(1)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">1分</button>
-<button id="preset-3" onclick="setPreset(3)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">3分</button>
-<button id="preset-5" onclick="setPreset(5)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">5分</button>
-<button id="preset-10" onclick="setPreset(10)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">10分</button>
-<button id="preset-15" onclick="setPreset(15)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">15分</button>
-<button id="preset-30" onclick="setPreset(30)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">30分</button>
-</div>
-</div>
-
-<!-- 動く部分の構成（一重〜五重） -->
-<div class="space-y-3">
-<div class="flex justify-between text-sm text-zinc-400 font-medium">
-<span>視覚リング数</span>
-<span id="ring-count-label" class="text-orange-500 font-bold">一重</span>
-</div>
-<div class="grid grid-cols-5 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80">
-<button onclick="setRingCount(1)" id="btn-ring-1" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow">
-一重
-</button>
-<button onclick="setRingCount(2)" id="btn-ring-2" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
-二重
-</button>
-<button onclick="setRingCount(3)" id="btn-ring-3" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
-三重
-</button>
-<button onclick="setRingCount(4)" id="btn-ring-4" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
-四重
-</button>
-<button onclick="setRingCount(5)" id="btn-ring-5" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
-五重
-</button>
-</div>
-</div>
-
-<!-- アラーム音設定 -->
-<div id="section-sound-setup" class="space-y-2">
-<label class="block text-sm text-zinc-400 font-medium">アラート音</label>
-<select id="sound-select" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-sm text-zinc-300 focus:outline-none focus:border-orange-500 cursor-pointer">
-<option value="chime">電子チャイム音（ビープ）</option>
-<option value="space">スペーシー・アラート（アップテンポ）</option>
-<option value="spring">春の朝（爽やか・リズミカル）</option>
-<option value="pulse">ソフトパルス（瞑想風）</option>
-</select>
-</div>
-</div>
-
-<!-- 右側：メインビジュアルタイマー画面（高さと幅の比率を考慮したレスポンシブ設計） -->
-<div class="flex-1 w-full flex flex-col items-center justify-center p-2">
-<!-- タイマー開始時に上部に小さく表示されるコンパクトなリング数切替バー -->
-<div id="active-ring-selector" class="hidden mb-4 bg-zinc-900/90 border border-zinc-800/80 rounded-full p-1 items-center space-x-1 shadow-2xl z-30 transition-all duration-300">
-<button onclick="setRingCount(1)" id="btn-active-ring-1" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow">一重</button>
-<button onclick="setRingCount(2)" id="btn-active-ring-2" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">二重</button>
-<button onclick="setRingCount(3)" id="btn-active-ring-3" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">三重</button>
-<button onclick="setRingCount(4)" id="btn-active-ring-4" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">四重</button>
-<button onclick="setRingCount(5)" id="btn-active-ring-5" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">五重</button>
-</div>
-
-<!-- アプリ表示用コンテナ（画面の高さに合わせて絶対に周囲と被らないサイズに自動縮小、開始時は大きく展開） -->
-<div id="timer-container" class="relative w-full aspect-square max-w-[min(420px,50vh)] flex items-center justify-center transition-all duration-500">
-
-<!-- リング用SVG（蚊取り線香螺旋パスを使用） -->
-<svg class="absolute w-full h-full p-2" viewBox="0 0 400 400">
-<!-- 背景の薄いガイドラインとしての同心円（最大五重まで動的連動） -->
-<circle id="bg-circle-1" cx="200" cy="200" r="175" fill="none" stroke="#18181b" stroke-width="2"/>
-<circle id="bg-circle-2" cx="200" cy="200" r="145" fill="none" stroke="#18181b" stroke-width="1.5"/>
-<circle cx="200" cy="200" r="115" id="bg-circle-3" fill="none" stroke="#18181b" stroke-width="1"/>
-<circle id="bg-circle-4" cx="200" cy="200" r="85" fill="none" stroke="#18181b" stroke-width="1"/>
-<circle id="bg-circle-5" cx="200" cy="200" r="55" fill="none" stroke="#18181b" stroke-width="1"/>
-
-<!-- 背景の薄いガイドラインとしての蚊取り線香螺旋 -->
-<path id="spiral-guide" fill="none" stroke="#1c1917" stroke-width="10" stroke-linecap="round" opacity="0.4" />
-
-<!-- アクティブな蚊取り線香螺旋（オレンジ） -->
-<path id="spiral-active" class="circle-ring" fill="none" stroke="#f97316" stroke-width="11" stroke-linecap="round" />
-
-<!-- タイマーの文字盤目盛り（時計風のドット・12箇所） -->
-<g id="dial-ticks">
-<!-- JSで動的に追加 -->
-</g>
-</svg>
-
-<!-- 中央 of タイムテキスト -->
-<div class="absolute flex flex-col items-center justify-center text-center z-10 pointer-events-none">
-<!-- ベルマークと通知予定時刻 -->
-<div id="scheduled-bell" class="flex items-center text-xs text-zinc-500 font-semibold mb-2 gap-1.5 opacity-0 transition-opacity duration-300">
-<i data-lucide="bell" class="w-3.5 h-3.5 text-zinc-500"></i>
-<span id="scheduled-time">--:--</span>
-</div>
-
-<!-- デジタル残り時間 -->
-<span id="timer-text" class="font-mono-custom text-5xl md:text-6xl font-light tracking-tight">10:00</span>
-<span id="sub-millisecond-text" class="font-mono-custom text-sm font-semibold tracking-wider text-orange-500 mt-1 opacity-80">.0</span>
-</div>
-
-<!-- 左アクションボタン：キャンセル / リセット（コンパクトサイズに変更） -->
-<button id="cancel-btn" class="absolute left-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition active:scale-95 focus:outline-none">
-<span class="text-[10px] md:text-xs font-bold">リセット</span>
-</button>
-
-<!-- 右アクションボタン：開始 / 一時停止（コンパクトサイズに変更） -->
-<button id="start-btn" class="absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none">
-<span id="start-btn-text" class="text-[10px] md:text-xs font-bold">開始</span>
-</button>
-
-</div>
-
-<!-- 下部ステータス表示 -->
-<div id="toast-message" class="mt-4 px-6 py-3 rounded-full bg-orange-500 text-black font-bold text-sm shadow-xl flex items-center gap-2 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
-<i data-lucide="party-popper" class="w-4 h-4"></i>
-<span id="toast-text">時間が終了しました！</span>
-</div>
-</div>
-
-</main>
-
-<!-- Web Audio API を用いた効果音生成シンセサイザー -->
-<script>
-let audioCtx = null;
-let alarmTimer = null; // ループ鳴動用のインターバルタイマー
-let isAlarmActive = false; // アラーム作動状態フラグ
-
-// 音声の初期化。サスペンド状態も確実にレジュームさせる
-function initAudio() {
-if (!audioCtx) {
-audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-}
-if (audioCtx && audioCtx.state === 'suspended') {
-audioCtx.resume().catch(err => console.log("AudioContext resume failed:", err));
-}
-}
-
-// 初回ユーザーアクションによる音声アクティベーション
-const unlockAudio = () => {
-initAudio();
-document.removeEventListener('click', unlockAudio);
-document.removeEventListener('touchstart', unlockAudio);
-};
-document.addEventListener('click', unlockAudio);
-document.addEventListener('touchstart', unlockAudio);
-
-// 指定 of 音源タイプを単発再生する関数 (内部呼び出し用)
-function playAlertSoundSingle(type) {
-initAudio();
-if (!audioCtx) return;
-
-const now = audioCtx.currentTime;
-
-if (type === 'chime') {
-for (let i = 0; i < 4; i++) {
-const osc = audioCtx.createOscillator();
-const gain = audioCtx.createGain();
-
-osc.type = 'sine';
-osc.frequency.setValueAtTime(880, now + i * 0.15); // ややテンポ良く鳴らす
-
-gain.gain.setValueAtTime(0, now + i * 0.15);
-gain.gain.linearRampToValueAtTime(0.4, now + i * 0.15 + 0.03);
-gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.12);
-
-osc.connect(gain);
-gain.connect(audioCtx.destination);
-
-osc.start(now + i * 0.15);
-osc.stop(now + i * 0.15 + 0.14);
-}
-} else if (type === 'space') {
-// --- テンションの上がるエレクトロニック・ミュージック（150 BPM テクノ） ---
-const tempo = 150; // BPM
-const beatDuration = 60 / tempo; // 1拍 = 0.4秒
-
-// 1. 強力な4つ打ちキックドラム（4拍）
-for (let b = 0; b < 4; b++) {
-const kickTime = now + b * beatDuration;
-
-const kickOsc = audioCtx.createOscillator();
-const kickGain = audioCtx.createGain();
-
-kickOsc.type = 'sine';
-kickOsc.frequency.setValueAtTime(150, kickTime);
-kickOsc.frequency.exponentialRampToValueAtTime(0.01, kickTime + 0.15);
-
-kickGain.gain.setValueAtTime(0.6, kickTime);
-kickGain.gain.exponentialRampToValueAtTime(0.01, kickTime + 0.15);
-
-kickOsc.connect(kickGain);
-kickGain.connect(audioCtx.destination);
-
-kickOsc.start(kickTime);
-kickOsc.stop(kickTime + 0.16);
-}
-
-// 2. テンションの上がる高速エレクトロ・シンセ・アルペジオ (8分音符で弾む)
-// Cマイナー・ペンタトニックスケール
-const melody = [523.25, 622.25, 783.99, 523.25, 783.99, 932.33, 1046.50, 783.99];
-for (let i = 0; i < 8; i++) {
-const noteTime = now + i * (beatDuration / 2);
-
-const osc = audioCtx.createOscillator();
-const filter = audioCtx.createBiquadFilter();
-const gain = audioCtx.createGain();
-
-osc.type = 'sawtooth'; // 歪みとパンチのある鋸歯状波
-osc.frequency.setValueAtTime(melody[i], noteTime);
-
-// フィルターエンベロープで「ミョンミョン」したシンセリードを演出
-filter.type = 'lowpass';
-filter.Q.setValueAtTime(4, noteTime);
-filter.frequency.setValueAtTime(1500, noteTime);
-filter.frequency.exponentialRampToValueAtTime(400, noteTime + 0.18);
-
-gain.gain.setValueAtTime(0, noteTime);
-gain.gain.linearRampToValueAtTime(0.12, noteTime + 0.02);
-gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.18);
-
-osc.connect(filter);
-filter.connect(gain);
-gain.connect(audioCtx.destination);
-
-osc.start(noteTime);
-osc.stop(noteTime + 0.19);
-}
-} else if (type === 'spring') {
-// --- 春の朝をイメージした爽やかでリズミカルな音楽（120 BPM マリンバ/ベル風） ---
-const tempo = 120; // BPM
-const beatDuration = 60 / tempo; // 1拍 = 0.5秒
-
-// 爽やかで明るく弾むコードアルペジオ (C Major -> F Major -> G Major -> C Major風の動き)
-const melody = [523.25, 659.25, 783.99, 1046.50, 880.00, 698.46, 523.25, 987.77, 783.99, 587.33, 523.25, 659.25, 783.99, 1046.50, 783.99, 659.25];
-const noteInterval = beatDuration / 2; // 0.25秒
-
-for (let i = 0; i < melody.length; i++) {
-const noteTime = now + i * noteInterval;
-
-const osc = audioCtx.createOscillator();
-const oscSub = audioCtx.createOscillator(); // 明るさと厚みを出すサブオシレーター
-const gain = audioCtx.createGain();
-
-osc.type = 'triangle';
-osc.frequency.setValueAtTime(melody[i], noteTime);
-
-oscSub.type = 'sine';
-oscSub.frequency.setValueAtTime(melody[i] * 2, noteTime); // 1オクターブ上で心地良いきらめきをプラス
-
-gain.gain.setValueAtTime(0, noteTime);
-gain.gain.linearRampToValueAtTime(0.15, noteTime + 0.01);
-gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.16);
-
-osc.connect(gain);
-oscSub.connect(gain);
-gain.connect(audioCtx.destination);
-
-osc.start(noteTime);
-oscSub.start(noteTime);
-osc.stop(noteTime + 0.18);
-oscSub.stop(noteTime + 0.18);
-}
-} else if (type === 'pulse') {
-for (let i = 0; i < 2; i++) {
-const osc1 = audioCtx.createOscillator();
-const osc2 = audioCtx.createOscillator();
-const gain = audioCtx.createGain();
-
-osc1.type = 'sine';
-osc2.type = 'triangle';
-
-osc1.frequency.setValueAtTime(329.63, now + i * 0.4);
-osc2.frequency.setValueAtTime(331.63, now + i * 0.4);
-
-gain.gain.setValueAtTime(0, now + i * 0.4);
-gain.gain.linearRampToValueAtTime(0.4, now + i * 0.4 + 0.05);
-gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.4 + 0.7);
-
-osc1.connect(gain);
-osc2.connect(gain);
-gain.connect(audioCtx.destination);
-
-osc1.start(now + i * 0.4);
-osc2.start(now + i * 0.4);
-osc1.stop(now + i * 0.4 + 0.38);
-osc2.stop(now + i * 0.4 + 0.38);
-}
-}
-}
-
-// アラーム音を無限ループで開始する関数
-function startAlarmLoop(type) {
-if (isAlarmActive) return;
-isAlarmActive = true;
-
-const triggerSound = () => {
-if (!isAlarmActive) return;
-playAlertSoundSingle(type);
-};
-
-triggerSound(); // 初回再生
-
-// 音源タイプごとに再生間隔を設定
-let intervalTime = 1800; // デフォルト 1.8秒
-if (type === 'chime') intervalTime = 1200; // チャイムは短めピピッ×4
-if (type === 'space') intervalTime = 1600; // 1.6秒周期で150BPM 4小節ループと完全シンクロ
-if (type === 'spring') intervalTime = 4000; // 16音（0.25秒×16 = 4.0秒）のメロディなので、ループ周期を4秒に設定
-if (type === 'pulse') intervalTime = 1500;
-
-alarmTimer = setInterval(triggerSound, intervalTime);
-}
-
-// アラームを完全に停止する関数
-function stopAlarmLoop() {
-isAlarmActive = false;
-if (alarmTimer) {
-clearInterval(alarmTimer);
-alarmTimer = null;
-}
-}
-</script>
-
-<!-- アプリケーションのメイン状態・ロジック -->
-<script>
-// DOM要素の参照
-const spiralActive = document.getElementById('spiral-active');
-const spiralGuide = document.getElementById('spiral-guide');
-const dialTicks = document.getElementById('dial-ticks');
-const timerContainer = document.getElementById('timer-container');
-
-const selectHours = document.getElementById('select-hours');
-const selectMinutes = document.getElementById('select-minutes');
-const selectSeconds = document.getElementById('select-seconds');
-const targetTimeDisplay = document.getElementById('target-time-display');
-
-const ringCountLabel = document.getElementById('ring-count-label');
-
-const timerText = document.getElementById('timer-text');
-const subMilliText = document.getElementById('sub-millisecond-text');
-
-const scheduledBell = document.getElementById('scheduled-bell');
-const scheduledTime = document.getElementById('scheduled-time');
-
-const cancelBtn = document.getElementById('cancel-btn');
-const startBtn = document.getElementById('start-btn');
-const startBtnText = document.getElementById('start-btn-text');
-
-const toastMessage = document.getElementById('toast-message');
-const toastText = document.getElementById('toast-text');
-const soundSelect = document.getElementById('sound-select');
-
-// アプリの状態管理
-let totalDurationSeconds = 600; // デフォルト10分
-let remainingSeconds = 600;
-let isRunning = false;
-let isFinished = false; // アラーム作動状態
-let animationFrameId = null; // requestAnimationFrame用ID
-let lastTimestamp = 0; // ループ制御用タイムスタンプ
-let ringCount = 1; // 1: 一重, 2: 二重, 3: 三重, 4: 四重, 5: 五重
-
-// SVGリングの基本パラメータ
-const rOuter = 175;
-
-// 初期設定
-function initApp() {
-// プルダウンメニューのオプションを生成
-populateSelectOptions();
-
-// 文字盤目盛りの描画
-drawDialTicks();
-
-// 初期同期
-syncSelectsToDuration();
-updateRingDisplay();
-updateTimerVisuals();
-updateControlPanelVisibility();
-
-// イベントリスナーの登録
-selectHours.addEventListener('change', handleInputChange);
-selectMinutes.addEventListener('change', handleInputChange);
-selectSeconds.addEventListener('change', handleInputChange);
-
-cancelBtn.addEventListener('click', handleCancelClick);
-startBtn.addEventListener('click', handleStartClick);
-
-// Lucideアイコンのレンダリング
-lucide.createIcons();
-}
-
-// プルダウン用のオプションを動的生成（日本語表記）
-function populateSelectOptions() {
-// 時間のオプション (0〜23)
-selectHours.innerHTML = '';
-for (let i = 0; i <= 23; i++) {
-const opt = document.createElement('option');
-opt.value = i;
-opt.textContent = `${i}時間`;
-selectHours.appendChild(opt);
-}
-
-// 分のオプション (0〜59)
-selectMinutes.innerHTML = '';
-for (let i = 0; i <= 59; i++) {
-const opt = document.createElement('option');
-opt.value = i;
-opt.textContent = `${i}分`;
-selectMinutes.appendChild(opt);
-}
-
-// 秒のオプション (0〜59)
-selectSeconds.innerHTML = '';
-for (let i = 0; i <= 59; i++) {
-const opt = document.createElement('option');
-opt.value = i;
-opt.textContent = `${i}秒`;
-selectSeconds.appendChild(opt);
-}
-}
-
-// 文字盤に12時間分の目盛りを配置
-function drawDialTicks() {
-dialTicks.innerHTML = '';
-for (let i = 0; i < 12; i++) {
-const angle = (i * 30 * Math.PI) / 180;
-const x1 = 200 + 185 * Math.sin(angle);
-const y1 = 200 - 185 * Math.cos(angle);
-const x2 = 200 + 180 * Math.sin(angle);
-const y2 = 200 - 180 * Math.cos(angle);
-
-const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-line.setAttribute("x1", x1);
-line.setAttribute("y1", y1);
-line.setAttribute("x2", x2);
-line.setAttribute("y2", y2);
-line.setAttribute("stroke", i % 3 === 0 ? "#52525b" : "#27272a");
-line.setAttribute("stroke-width", i % 3 === 0 ? "2.5" : "1.5");
-line.setAttribute("stroke-linecap", "round");
-dialTicks.appendChild(line);
-}
-}
-
-// アルキメデスの螺旋パス（12時から反時計回り、蚊取り線香型）を動的生成する
-function generateSpiralPath(turns, startRadius, endRadius) {
-const cx = 200, cy = 200;
-const points = [];
-const steps = 180 * turns; // 1周あたり180段階の高精度描画
-const startAngle = -Math.PI / 2; // 12時の位置からスタート
-
-for (let i = 0; i <= steps; i++) {
-const t = i / steps; // 0.00 〜 1.00
-const angle = startAngle - t * turns * 2 * Math.PI; // 反時計回りにturns周分回転
-const r = startRadius - t * (startRadius - endRadius); // 半径が外側から内側へ滑らかに減少
-const x = cx + r * Math.cos(angle);
-const y = cy + r * Math.sin(angle);
-points.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
-}
-return points.join(' ');
-}
-
-// リングの数（一重〜五重）を変更（再生中であっても変更可能）
-function setRingCount(count) {
-if (isFinished) return; // アラーム鳴動中のみ変更不可
-ringCount = count;
-
-// コントロールパネル側のボタンのアクティブ表現切り替え
-const buttons = [
-{ btn: document.getElementById('btn-ring-1'), count: 1 },
-{ btn: document.getElementById('btn-ring-2'), count: 2 },
-{ btn: document.getElementById('btn-ring-3'), count: 3 },
-{ btn: document.getElementById('btn-ring-4'), count: 4 },
-{ btn: document.getElementById('btn-ring-5'), count: 5 }
-];
-
-buttons.forEach(item => {
-if (item.btn) {
-if (item.count === count) {
-item.btn.className = "py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow";
-} else {
-item.btn.className = "py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white";
-}
-}
-});
-
-// 開始時上部側のボタンのアクティブ表現切り替え
-const activeButtons = [
-{ btn: document.getElementById('btn-active-ring-1'), count: 1 },
-{ btn: document.getElementById('btn-active-ring-2'), count: 2 },
-{ btn: document.getElementById('btn-active-ring-3'), count: 3 },
-{ btn: document.getElementById('btn-active-ring-4'), count: 4 },
-{ btn: document.getElementById('btn-active-ring-5'), count: 5 }
-];
-
-activeButtons.forEach(item => {
-if (item.btn) {
-if (item.count === count) {
-item.btn.className = "px-3.5 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow";
-} else {
-item.btn.className = "px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white";
-}
-}
-});
-
-// リング数表示ラベルの更新
-if (count === 1) {
-ringCountLabel.textContent = "一重";
-} else if (count === 2) {
-ringCountLabel.textContent = "二重";
-} else if (count === 3) {
-ringCountLabel.textContent = "三重";
-} else if (count === 4) {
-ringCountLabel.textContent = "四重";
-} else if (count === 5) {
-ringCountLabel.textContent = "五重";
-}
-
-updateRingDisplay();
-updateTimerVisuals();
-}
-
-// 各リング数に合わせた美しい蚊取り線香状（スパイラル）の背景ガイドラインを適用
-function updateRingDisplay() {
-let turns = ringCount;
-let startR = rOuter;
-let endR = rOuter - (ringCount - 1) * 30; // 1周ごとに半径を30ずつ小さくする
-
-// ガイドライン用のフル螺旋を生成・適用
-const pathD = generateSpiralPath(turns, startR, endR);
-spiralGuide.setAttribute('d', pathD);
-
-// ガイドライン（薄い灰色の円）の表示連動
-for (let i = 1; i <= 5; i++) {
-const bgCircle = document.getElementById(`bg-circle-${i}`);
-if (bgCircle) {
-bgCircle.style.display = i <= ringCount ? 'block' : 'none';
-}
-}
-}
-
-// プリセットボタン
-function setPreset(minutes) {
-if (isRunning || isFinished) return;
-selectHours.value = 0;
-selectMinutes.value = minutes;
-selectSeconds.value = 0;
-handleInputChange();
-}
-
-// プルダウン変更 of 同期
-function handleInputChange() {
-let h = parseInt(selectHours.value) || 0;
-let m = parseInt(selectMinutes.value) || 0;
-let s = parseInt(selectSeconds.value) || 0;
-
-totalDurationSeconds = (h * 3600) + (m * 60) + s;
-if (totalDurationSeconds <= 0) {
-totalDurationSeconds = 1;
-}
-
-remainingSeconds = totalDurationSeconds;
-
-let text = "";
-if (h > 0) text += `${h}時間 `;
-if (m > 0 || h > 0) text += `${m}分 `;
-text += `${s}秒`;
-targetTimeDisplay.textContent = text;
-
-updateTimerVisuals();
-}
-
-// インプット（プルダウン）値を秒から逆算して同期
-function syncSelectsToDuration() {
-const h = Math.floor(remainingSeconds / 3600);
-const m = Math.floor((remainingSeconds % 3600) / 60);
-const s = Math.floor(remainingSeconds % 60);
-
-selectHours.value = h;
-selectMinutes.value = m;
-selectSeconds.value = s;
-
-let text = "";
-if (h > 0) text += `${h}時間 `;
-if (m > 0 || h > 0) text += `${m}分 `;
-text += `${s}秒`;
-targetTimeDisplay.textContent = text;
-}
-
-// デジタル表示のフォーマット
-function formatDigitalTime(sec) {
-const h = Math.floor(sec / 3600);
-const m = Math.floor((sec % 3600) / 60);
-const s = Math.floor(sec % 60);
-
-if (h > 0) {
-return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-} else {
-return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-}
-
-// タイマー完了予定時刻の更新
-function updateScheduledTime() {
-if (!isRunning) {
-scheduledBell.classList.add('opacity-0');
-scheduledBell.classList.remove('opacity-100');
-return;
-}
-
-const now = new Date();
-const future = new Date(now.getTime() + remainingSeconds * 1000);
-const h = String(future.getHours()).padStart(2, '0');
-const m = String(future.getMinutes()).padStart(2, '0');
-
-scheduledTime.textContent = `${h}:${m}`;
-scheduledBell.classList.remove('opacity-0');
-scheduledBell.classList.add('opacity-100');
-}
-
-// コントロールパネルの表示/非表示（タイマー開始時は設定パネル全体を隠し、上部にコンパクトなリング切替を表示）
-function updateControlPanelVisibility() {
-const isPlayingOrFinished = isRunning || isFinished;
-const controlPanel = document.getElementById('control-panel');
-const activeRingSelector = document.getElementById('active-ring-selector');
-
-if (isPlayingOrFinished) {
-// 開始時は左側のコントロールパネル全体を非表示にする
-if (controlPanel) controlPanel.classList.add('hidden');
-// 上部のコンパクトな切り替えボタンを表示
-if (activeRingSelector) {
-activeRingSelector.classList.remove('hidden');
-activeRingSelector.classList.add('flex');
-}
-
-// タイマー画面を画面いっぱいに広く使うために、max-width制限を動的に拡大する
-if (timerContainer) {
-timerContainer.classList.remove('max-w-[min(420px,50vh)]');
-timerContainer.classList.add('max-w-[min(650px,80vh)]');
-}
-} else {
-// 停止・設定中は左側のコントロールパネル全体を表示する
-if (controlPanel) controlPanel.classList.remove('hidden');
-// 上部のコンパクトな切り替えボタンを非表示
-if (activeRingSelector) {
-activeRingSelector.classList.add('hidden');
-activeRingSelector.classList.remove('flex');
-}
-
-// 元のサイズへ戻す
-if (timerContainer) {
-timerContainer.classList.remove('max-w-[min(650px,80vh)]');
-timerContainer.classList.add('max-w-[min(420px,50vh)]');
-}
-}
-}
-
-// 残り時間（割合）に基づいて、外側が削れた残りの螺旋パスのみを動的に生成する関数 (シームレス端点ブレンド補間仕様)
-function generateSpiralRemainingPath(turns, startRadius, endRadius, progress) {
-if (progress <= 0) return '';
-
-const cx = 200, cy = 200;
-const points = [];
-const steps = 180 * turns;
-const startAngle = -Math.PI / 2;
-
-// 残り割合に応じた正確な位置を算出
-const tStart = 1.0 - progress;
-
-// 1. 完全連続的な補間処理により、開始端点の座標を精密に算出（ガタつきを100%排除）
-const angleStart = startAngle - tStart * turns * 2 * Math.PI;
-const rStart = startRadius - tStart * (startRadius - endRadius);
-const xStart = cx + rStart * Math.cos(angleStart);
-const yStart = cy + rStart * Math.sin(angleStart);
-
-// スタート位置を追加
-points.push(`M ${xStart.toFixed(2)} ${yStart.toFixed(2)}`);
-
-// 2. 次の整数ステップから残りの螺旋パス要素へ滑らかに結ぶ
-const startStep = Math.ceil(tStart * steps);
-for (let i = startStep; i <= steps; i++) {
-const t = i / steps; // 0.00 〜 1.00
-const angle = startAngle - t * turns * 2 * Math.PI; // 反時計回り
-const r = startRadius - t * (startRadius - endRadius);
-const x = cx + r * Math.cos(angle);
-const y = cy + r * Math.sin(angle);
-
-points.push(`L ${x.toFixed(2)} ${y.toFixed(2)}`);
-}
-return points.join(' ');
-}
-
-// 円形（らせん）タイマーの進捗ビジュアル描画 (動的パス描画アプローチ)
-function updateTimerVisuals() {
-// デジタルテキスト
-timerText.textContent = formatDigitalTime(Math.ceil(remainingSeconds));
-
-// 小数点（ミリ秒進捗）
-const fraction = remainingSeconds % 1;
-subMilliText.textContent = "." + Math.floor(fraction * 10);
-
-// 全体の残り割合（1.00 〜 0.00）
-const overallProgress = (isRunning && !isFinished)
-? (totalDurationSeconds > 0 ? (remainingSeconds / totalDurationSeconds) : 0)
-: 1.0;
-
-// 残り割合に合わせ、表示するスパイラルパラメータを計算
-let turns = ringCount;
-let startR = rOuter;
-let endR = rOuter - (ringCount - 1) * 30; // 1周ごとに半径を30ずつ小さくする
-
-// パスデータ自体の動的な反時計回り再計算
-const activeD = generateSpiralRemainingPath(turns, startR, endR, overallProgress);
-spiralActive.setAttribute('d', activeD);
-}
-
-// 右側：開始 / 一時停止 / 停止アクションのハンドラー
-function handleStartClick() {
-if (isFinished) {
-stopTimerAndAlarm();
-} else {
-toggleTimer();
-}
-}
-
-// 左側：キャンセル / リセットボタンのハンドラー
-function handleCancelClick() {
-if (isFinished) {
-stopTimerAndAlarm();
-} else {
-resetTimer();
-}
-}
-
-// 高精度アニメーションループ用 (requestAnimationFrame)
-function runTimerAnimation(timestamp) {
-if (!isRunning) return;
-
-if (!lastTimestamp) {
-lastTimestamp = timestamp;
-}
-
-// 経過時間を秒単位で計算（完全に滑らかな時間計算）
-const elapsed = (timestamp - lastTimestamp) / 1000;
-lastTimestamp = timestamp;
-
-remainingSeconds -= elapsed;
-
-if (remainingSeconds <= 0) {
-remainingSeconds = 0;
-updateTimerVisuals();
-timerComplete();
-} else {
-updateTimerVisuals();
-animationFrameId = requestAnimationFrame(runTimerAnimation);
-}
-}
-
-// タイマー開始・一時停止のトグル
-function toggleTimer() {
-initAudio();
-
-if (isRunning) {
-// 一時停止処理
-if (animationFrameId) {
-cancelAnimationFrame(animationFrameId);
-animationFrameId = null;
-}
-isRunning = false;
-startBtnText.textContent = "再開";
-startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none";
-
-// プルダウンのロック解除
-enableSelectControls();
-updateScheduledTime();
-updateTimerVisuals();
-updateControlPanelVisibility();
-} else {
-// 開始・再開処理
-if (remainingSeconds <= 0) {
-remainingSeconds = totalDurationSeconds;
-}
-
-isRunning = true;
-isFinished = false;
-startBtnText.textContent = "一時停止";
-startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-amber-950/80 border border-amber-800/80 flex flex-col items-center justify-center text-amber-500 hover:bg-amber-900 transition active:scale-95 focus:outline-none";
-
-// 実行中に間違えて触れないようプルダウンをロック
-disableSelectControls();
-updateScheduledTime();
-updateTimerVisuals();
-updateControlPanelVisibility();
-
-// アニメーションループを開始
-lastTimestamp = performance.now();
-animationFrameId = requestAnimationFrame(runTimerAnimation);
-}
-}
-
-// プルダウン操作の制限
-function disableSelectControls() {
-selectHours.disabled = true;
-selectMinutes.disabled = true;
-selectSeconds.disabled = true;
-selectHours.classList.add('opacity-50', 'cursor-not-allowed');
-selectMinutes.classList.add('opacity-50', 'cursor-not-allowed');
-selectSeconds.classList.add('opacity-50', 'cursor-not-allowed');
-}
-
-function enableSelectControls() {
-selectHours.disabled = false;
-selectMinutes.disabled = false;
-selectSeconds.disabled = false;
-selectHours.classList.remove('opacity-50', 'cursor-not-allowed');
-selectMinutes.classList.remove('opacity-50', 'cursor-not-allowed');
-selectSeconds.classList.remove('opacity-50', 'cursor-not-allowed');
-}
-
-// タイマー完了（無限アラームの開始フェーズ）
-function timerComplete() {
-if (animationFrameId) {
-cancelAnimationFrame(animationFrameId);
-animationFrameId = null;
-}
-isRunning = false;
-isFinished = true;
-
-// UIをアラーム用の「停止」ボタンに変更
-startBtnText.textContent = "停止";
-startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-600 border-2 border-red-400 flex flex-col items-center justify-center text-white font-black hover:bg-red-700 transition active:scale-95 focus:outline-none animate-pulse-red z-20";
-
-startAlarmLoop(soundSelect.value);
-
-toastMessage.classList.remove('translate-y-10', 'opacity-0');
-toastMessage.classList.add('translate-y-0', 'opacity-100');
-updateControlPanelVisibility();
-}
-
-// アラームを停止して通常画面に戻る
-function stopTimerAndAlarm() {
-stopAlarmLoop();
-isFinished = false;
-
-toastMessage.classList.remove('translate-y-0', 'opacity-100');
-toastMessage.classList.add('translate-y-10', 'opacity-0');
-
-resetTimer();
-}
-
-// 完全リセット
-function resetTimer() {
-if (animationFrameId) {
-cancelAnimationFrame(animationFrameId);
-animationFrameId = null;
-}
-stopAlarmLoop();
-
-isRunning = false;
-isFinished = false;
-remainingSeconds = totalDurationSeconds;
-
-startBtnText.textContent = "開始";
-startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none";
-
-enableSelectControls();
-syncSelectsToDuration();
-updateScheduledTime();
-updateTimerVisuals();
-updateControlPanelVisibility();
-}
-
-// 起動時イニシャライズ
-window.onload = () => {
-initApp();
-};
-</script>
+    <!-- メインコンテンツ -->
+    <main class="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 lg:p-8 gap-6 lg:gap-12 overflow-y-auto">
+        
+        <!-- 左側：コントロールパネル（設定） -->
+        <div id="control-panel" class="w-full lg:w-[380px] bg-zinc-900/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-800 flex flex-col gap-6 shadow-2xl shrink-0">
+            <div>
+                <h2 class="text-lg font-bold text-zinc-300 mb-1">タイマー設定</h2>
+                <p id="panel-desc" class="text-xs text-zinc-500">直感的なマルチレイヤーリングで時間を管理します。</p>
+            </div>
+
+            <!-- 時間設定 -->
+            <div id="section-time-setup" class="space-y-4">
+                <div class="flex justify-between text-sm text-zinc-400 font-medium">
+                    <span>設定時間</span>
+                    <span id="target-time-display" class="text-orange-500 font-bold">10分 00秒</span>
+                </div>
+                
+                <!-- 時間(H)/分(M)/秒(S) のプルダウン選択 -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
+                        <label class="block text-[10px] text-zinc-500 mb-1">時間</label>
+                        <select id="select-hours" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
+                            <!-- JSで動的に追加 (0-23) -->
+                        </select>
+                    </div>
+                    <div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
+                        <label class="block text-[10px] text-zinc-500 mb-1">分</label>
+                        <select id="select-minutes" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
+                            <!-- JSで動的に追加 (0-59) -->
+                        </select>
+                    </div>
+                    <div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
+                        <label class="block text-[10px] text-zinc-500 mb-1">秒</label>
+                        <select id="select-seconds" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
+                            <!-- JSで動的に追加 (0-59) -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- クイックプリセット -->
+                <div class="flex flex-wrap gap-1.5 mt-2">
+                    <button id="preset-1" onclick="setPreset(1)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">1分</button>
+                    <button id="preset-3" onclick="setPreset(3)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">3分</button>
+                    <button id="preset-5" onclick="setPreset(5)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">5分</button>
+                    <button id="preset-10" onclick="setPreset(10)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">10分</button>
+                    <button id="preset-15" onclick="setPreset(15)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">15分</button>
+                    <button id="preset-30" onclick="setPreset(30)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">30分</button>
+                </div>
+            </div>
+
+            <!-- 動く部分の構成（一重〜大） -->
+            <div class="space-y-3">
+                <div class="flex justify-between text-sm text-zinc-400 font-medium">
+                    <span>視覚リング数</span>
+                    <span id="ring-count-label" class="text-orange-500 font-bold">一重</span>
+                </div>
+                <div class="grid grid-cols-6 gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80">
+                    <button onclick="setRingCount(1)" id="btn-ring-1" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow">
+                        一重
+                    </button>
+                    <button onclick="setRingCount(2)" id="btn-ring-2" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+                        二重
+                    </button>
+                    <button onclick="setRingCount(3)" id="btn-ring-3" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+                        三重
+                    </button>
+                    <button onclick="setRingCount(4)" id="btn-ring-4" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+                        四重
+                    </button>
+                    <button onclick="setRingCount(5)" id="btn-ring-5" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+                        五重
+                    </button>
+                    <button onclick="setRingCount(6)" id="btn-ring-6" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white" title="大（パイチャート）">
+                        大
+                    </button>
+                </div>
+            </div>
+
+            <!-- アラーム音設定 -->
+            <div id="section-sound-setup" class="space-y-2">
+                <label class="block text-sm text-zinc-400 font-medium">アラート音</label>
+                <select id="sound-select" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-sm text-zinc-300 focus:outline-none focus:border-orange-500 cursor-pointer">
+                    <option value="chime">電子チャイム音（ビープ）</option>
+                    <option value="space">スペーシー・アラート（アップテンポ）</option>
+                    <option value="spring">春の朝（爽やか・リズミカル）</option>
+                    <option value="pulse">ソフトパルス（瞑想風）</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 右側：メインビジュアルタイマー画面（高さと幅の比率を考慮したレスポンシブ設計） -->
+        <div class="flex-1 w-full flex flex-col items-center justify-center p-2">
+            <!-- タイマー開始時に上部に小さく表示されるコンパクトなリング数切替バー -->
+            <div id="active-ring-selector" class="hidden mb-4 bg-zinc-900/90 border border-zinc-800/80 rounded-full p-1 items-center space-x-1 shadow-2xl z-30 transition-all duration-300">
+                <button onclick="setRingCount(1)" id="btn-active-ring-1" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow">一重</button>
+                <button onclick="setRingCount(2)" id="btn-active-ring-2" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">二重</button>
+                <button onclick="setRingCount(3)" id="btn-active-ring-3" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">三重</button>
+                <button onclick="setRingCount(4)" id="btn-active-ring-4" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">四重</button>
+                <button onclick="setRingCount(5)" id="btn-active-ring-5" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">五重</button>
+                <button onclick="setRingCount(6)" id="btn-active-ring-6" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">大</button>
+            </div>
+
+            <!-- アプリ表示用コンテナ（画面の高さに合わせて絶対に周囲と被らないサイズに自動縮小、開始時は大きく展開） -->
+            <div id="timer-container" class="relative w-full aspect-square max-w-[min(420px,50vh)] flex items-center justify-center transition-all duration-500">
+                
+                <!-- リング用SVG（蚊取り線香螺旋パス、大パイチャート用パスを使用） -->
+                <svg class="absolute w-full h-full p-2" viewBox="0 0 400 400">
+                    <!-- 背景の薄いガイドラインとしての同心円（最大五重まで動的連動） -->
+                    <circle id="bg-circle-1" cx="200" cy="200" r="175" fill="none" stroke="#18181b" stroke-width="2"/>
+                    <circle id="bg-circle-2" cx="200" cy="200" r="145" fill="none" stroke="#18181b" stroke-width="1.5"/>
+                    <circle cx="200" cy="200" r="115" id="bg-circle-3" fill="none" stroke="#18181b" stroke-width="1"/>
+                    <circle id="bg-circle-4" cx="200" cy="200" r="85" fill="none" stroke="#18181b" stroke-width="1"/>
+                    <circle id="bg-circle-5" cx="200" cy="200" r="55" fill="none" stroke="#18181b" stroke-width="1"/>
+
+                    <!-- 「大」モード用の背景円盤 -->
+                    <circle id="solid-guide" cx="200" cy="200" r="175" fill="#18181b" style="display: none;" />
+
+                    <!-- 背景の薄いガイドラインとしての蚊取り線香螺旋 -->
+                    <path id="spiral-guide" fill="none" stroke="#1c1917" stroke-width="10" stroke-linecap="round" opacity="0.4" />
+
+                    <!-- 「大」モード用のアクティブな扇形（オレンジ） -->
+                    <path id="solid-active" fill="#f97316" style="display: none;" />
+
+                    <!-- アクティブな蚊取り線香螺旋（オレンジ） -->
+                    <path id="spiral-active" class="circle-ring" fill="none" stroke="#f97316" stroke-width="11" stroke-linecap="round" />
+
+                    <!-- タイマーの文字盤目盛り（時計風のドット・12箇所） -->
+                    <g id="dial-ticks">
+                        <!-- JSで動的に追加 -->
+                    </g>
+                </svg>
+
+                <!-- 中央 of タイムテキスト -->
+                <div class="absolute flex flex-col items-center justify-center text-center z-10 pointer-events-none">
+                    <!-- ベルマークと通知予定時刻 -->
+                    <div id="scheduled-bell" class="flex items-center text-xs text-zinc-500 font-semibold mb-2 gap-1.5 opacity-0 transition-opacity duration-300">
+                        <i data-lucide="bell" class="w-3.5 h-3.5 text-zinc-500"></i>
+                        <span id="scheduled-time">--:--</span>
+                    </div>
+
+                    <!-- デジタル残り時間 -->
+                    <span id="timer-text" class="font-mono-custom text-5xl md:text-6xl font-light tracking-tight">10:00</span>
+                    <span id="sub-millisecond-text" class="font-mono-custom text-sm font-semibold tracking-wider text-orange-500 mt-1 opacity-80">.0</span>
+                </div>
+
+                <!-- 左アクションボタン：キャンセル / リセット（コンパクトサイズに変更） -->
+                <button id="cancel-btn" class="absolute left-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition active:scale-95 focus:outline-none">
+                    <span class="text-[10px] md:text-xs font-bold">リセット</span>
+                </button>
+
+                <!-- 右アクションボタン：開始 / 一時停止（コンパクトサイズに変更） -->
+                <button id="start-btn" class="absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none">
+                    <span id="start-btn-text" class="text-[10px] md:text-xs font-bold">開始</span>
+                </button>
+
+            </div>
+
+            <!-- 下部ステータス表示 -->
+            <div id="toast-message" class="mt-4 px-6 py-3 rounded-full bg-orange-500 text-black font-bold text-sm shadow-xl flex items-center gap-2 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
+                <i data-lucide="party-popper" class="w-4 h-4"></i>
+                <span id="toast-text">時間が終了しました！</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Web Audio API を用いた効果音生成シンセサイザー -->
+    <script>
+        let audioCtx = null;
+        let alarmTimer = null;    // ループ鳴動用のインターバルタイマー
+        let isAlarmActive = false; // アラーム作動状態フラグ
+
+        // 音声の初期化。サスペンド状態も確実にレジュームさせる
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(err => console.log("AudioContext resume failed:", err));
+            }
+        }
+
+        // 初回ユーザーアクションによる音声アクティベーション
+        const unlockAudio = () => {
+            initAudio();
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        };
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        // 指定 of 音源タイプを単発再生する関数 (内部呼び出し用)
+        function playAlertSoundSingle(type) {
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'chime') {
+                for (let i = 0; i < 4; i++) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, now + i * 0.15); // ややテンポ良く鳴らす
+                    
+                    gain.gain.setValueAtTime(0, now + i * 0.15);
+                    gain.gain.linearRampToValueAtTime(0.4, now + i * 0.15 + 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.12);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.start(now + i * 0.15);
+                    osc.stop(now + i * 0.15 + 0.14);
+                }
+            } else if (type === 'space') {
+                // --- テンションの上がるエレクトロニック・ミュージック（150 BPM テクノ） ---
+                const tempo = 150; // BPM
+                const beatDuration = 60 / tempo; // 1拍 = 0.4秒
+
+                // 1. 強力な4つ打ちキックドラム（4拍）
+                for (let b = 0; b < 4; b++) {
+                    const kickTime = now + b * beatDuration;
+
+                    const kickOsc = audioCtx.createOscillator();
+                    const kickGain = audioCtx.createGain();
+
+                    kickOsc.type = 'sine';
+                    kickOsc.frequency.setValueAtTime(150, kickTime);
+                    kickOsc.frequency.exponentialRampToValueAtTime(0.01, kickTime + 0.15);
+
+                    kickGain.gain.setValueAtTime(0.6, kickTime);
+                    kickGain.gain.exponentialRampToValueAtTime(0.01, kickTime + 0.15);
+
+                    kickOsc.connect(kickGain);
+                    kickGain.connect(audioCtx.destination);
+
+                    kickOsc.start(kickTime);
+                    kickOsc.stop(kickTime + 0.16);
+                }
+
+                // 2. テンションの上がる高速エレクトロ・シンセ・アルペジオ (8分音符で弾む)
+                // Cマイナー・ペンタトニックスケール
+                const melody = [523.25, 622.25, 783.99, 523.25, 783.99, 932.33, 1046.50, 783.99];
+                for (let i = 0; i < 8; i++) {
+                    const noteTime = now + i * (beatDuration / 2);
+
+                    const osc = audioCtx.createOscillator();
+                    const filter = audioCtx.createBiquadFilter();
+                    const gain = audioCtx.createGain();
+
+                    osc.type = 'sawtooth'; // 歪みとパンチのある鋸歯状波
+                    osc.frequency.setValueAtTime(melody[i], noteTime);
+
+                    // フィルターエンベロープで「ミョンミョン」したシンセリードを演出
+                    filter.type = 'lowpass';
+                    filter.Q.setValueAtTime(4, noteTime);
+                    filter.frequency.setValueAtTime(1500, noteTime);
+                    filter.frequency.exponentialRampToValueAtTime(400, noteTime + 0.18);
+
+                    gain.gain.setValueAtTime(0, noteTime);
+                    gain.gain.linearRampToValueAtTime(0.12, noteTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.18);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(noteTime);
+                    osc.stop(noteTime + 0.19);
+                }
+            } else if (type === 'spring') {
+                // --- 春の朝をイメージした爽やかでリズミカルな音楽（120 BPM マリンバ/ベル風） ---
+                const tempo = 120; // BPM
+                const beatDuration = 60 / tempo; // 1拍 = 0.5秒
+                
+                // 爽やかで明るく弾むコードアルペジオ (C Major -> F Major -> G Major -> C Major風の動き)
+                const melody = [523.25, 659.25, 783.99, 1046.50, 880.00, 698.46, 523.25, 987.77, 783.99, 587.33, 523.25, 659.25, 783.99, 1046.50, 783.99, 659.25];
+                const noteInterval = beatDuration / 2; // 0.25秒
+
+                for (let i = 0; i < melody.length; i++) {
+                    const noteTime = now + i * noteInterval;
+
+                    const osc = audioCtx.createOscillator();
+                    const oscSub = audioCtx.createOscillator(); // 明るさと厚みを出すサブオシレーター
+                    const gain = audioCtx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(melody[i], noteTime);
+
+                    oscSub.type = 'sine';
+                    oscSub.frequency.setValueAtTime(melody[i] * 2, noteTime); // 1オクターブ上で心地良いきらめきをプラス
+
+                    gain.gain.setValueAtTime(0, noteTime);
+                    gain.gain.linearRampToValueAtTime(0.15, noteTime + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.16);
+
+                    osc.connect(gain);
+                    oscSub.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(noteTime);
+                    oscSub.start(noteTime);
+                    osc.stop(noteTime + 0.18);
+                    oscSub.stop(noteTime + 0.18);
+                }
+            } else if (type === 'pulse') {
+                for (let i = 0; i < 2; i++) {
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc1.type = 'sine';
+                    osc2.type = 'triangle';
+                    
+                    osc1.frequency.setValueAtTime(329.63, now + i * 0.4);
+                    osc2.frequency.setValueAtTime(331.63, now + i * 0.4);
+                    
+                    gain.gain.setValueAtTime(0, now + i * 0.4);
+                    gain.gain.linearRampToValueAtTime(0.4, now + i * 0.4 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.4 + 0.7);
+                    
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc1.start(now + i * 0.4);
+                    osc2.start(now + i * 0.4);
+                    osc1.stop(now + i * 0.4 + 0.38);
+                    osc2.stop(now + i * 0.4 + 0.38);
+                }
+            }
+        }
+
+        // アラーム音を無限ループで開始する関数
+        function startAlarmLoop(type) {
+            if (isAlarmActive) return;
+            isAlarmActive = true;
+
+            const triggerSound = () => {
+                if (!isAlarmActive) return;
+                playAlertSoundSingle(type);
+            };
+
+            triggerSound(); // 初回再生
+
+            // 音源タイプごとに再生間隔を設定
+            let intervalTime = 1800; // デフォルト 1.8秒
+            if (type === 'chime') intervalTime = 1200; // チャイムは短めピピッ×4
+            if (type === 'space') intervalTime = 1600; // 1.6秒周期で150BPM 4小節ループと完全シンクロ
+            if (type === 'spring') intervalTime = 4000; // 16音（0.25秒×16 = 4.0秒）のメロディなので、ループ周期を4秒に設定
+            if (type === 'pulse') intervalTime = 1500;
+
+            alarmTimer = setInterval(triggerSound, intervalTime);
+        }
+
+        // アラームを完全に停止する関数
+        function stopAlarmLoop() {
+            isAlarmActive = false;
+            if (alarmTimer) {
+                clearInterval(alarmTimer);
+                alarmTimer = null;
+            }
+        }
+    </script>
+
+    <!-- アプリケーションのメイン状態・ロジック -->
+    <script>
+        // DOM要素の参照
+        const spiralActive = document.getElementById('spiral-active');
+        const spiralGuide = document.getElementById('spiral-guide');
+        const solidActive = document.getElementById('solid-active');
+        const solidGuide = document.getElementById('solid-guide');
+        const dialTicks = document.getElementById('dial-ticks');
+        const timerContainer = document.getElementById('timer-container');
+        
+        const selectHours = document.getElementById('select-hours');
+        const selectMinutes = document.getElementById('select-minutes');
+        const selectSeconds = document.getElementById('select-seconds');
+        const targetTimeDisplay = document.getElementById('target-time-display');
+        
+        const ringCountLabel = document.getElementById('ring-count-label');
+        
+        const timerText = document.getElementById('timer-text');
+        const subMilliText = document.getElementById('sub-millisecond-text');
+        
+        const scheduledBell = document.getElementById('scheduled-bell');
+        const scheduledTime = document.getElementById('scheduled-time');
+        
+        const cancelBtn = document.getElementById('cancel-btn');
+        const startBtn = document.getElementById('start-btn');
+        const startBtnText = document.getElementById('start-btn-text');
+        
+        const toastMessage = document.getElementById('toast-message');
+        const toastText = document.getElementById('toast-text');
+        const soundSelect = document.getElementById('sound-select');
+
+        // アプリの状態管理
+        let totalDurationSeconds = 600; // デフォルト10分
+        let remainingSeconds = 600;
+        let isRunning = false;
+        let isFinished = false; // アラーム作動状態
+        let animationFrameId = null; // requestAnimationFrame用ID
+        let lastTimestamp = 0; // ループ制御用タイムスタンプ
+        let ringCount = 1; // 1: 一重, 2: 二重, 3: 三重, 4: 四重, 5: 五重, 6: 大
+        
+        // SVGリングの基本パラメータ
+        const rOuter = 175;
+        const rMiddle = 145; 
+        const rInner = 115; 
+
+        // 初期設定
+        function initApp() {
+            // プルダウンメニューのオプションを生成
+            populateSelectOptions();
+
+            // 文字盤目盛りの描画
+            drawDialTicks();
+
+            // 初期同期
+            syncSelectsToDuration();
+            updateRingDisplay();
+            updateTimerVisuals();
+            updateControlPanelVisibility();
+
+            // イベントリスナーの登録
+            selectHours.addEventListener('change', handleInputChange);
+            selectMinutes.addEventListener('change', handleInputChange);
+            selectSeconds.addEventListener('change', handleInputChange);
+
+            cancelBtn.addEventListener('click', handleCancelClick);
+            startBtn.addEventListener('click', handleStartClick);
+
+            // Lucideアイコンのレンダリング
+            lucide.createIcons();
+        }
+
+        // プルダウン用のオプションを動的生成（日本語表記）
+        function populateSelectOptions() {
+            // 時間のオプション (0〜23)
+            selectHours.innerHTML = '';
+            for (let i = 0; i <= 23; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${i}時間`;
+                selectHours.appendChild(opt);
+            }
+
+            // 分のオプション (0〜59)
+            selectMinutes.innerHTML = '';
+            for (let i = 0; i <= 59; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${i}分`;
+                selectMinutes.appendChild(opt);
+            }
+
+            // 秒のオプション (0〜59)
+            selectSeconds.innerHTML = '';
+            for (let i = 0; i <= 59; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${i}秒`;
+                selectSeconds.appendChild(opt);
+            }
+        }
+
+        // 文字盤に12時間分の目盛りを配置
+        function drawDialTicks() {
+            dialTicks.innerHTML = '';
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * 30 * Math.PI) / 180;
+                const x1 = 200 + 185 * Math.sin(angle);
+                const y1 = 200 - 185 * Math.cos(angle);
+                const x2 = 200 + 180 * Math.sin(angle);
+                const y2 = 200 - 180 * Math.cos(angle);
+                
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", x1);
+                line.setAttribute("y1", y1);
+                line.setAttribute("x2", x2);
+                line.setAttribute("y2", y2);
+                line.setAttribute("stroke", i % 3 === 0 ? "#52525b" : "#27272a");
+                line.setAttribute("stroke-width", i % 3 === 0 ? "2.5" : "1.5");
+                line.setAttribute("stroke-linecap", "round");
+                dialTicks.appendChild(line);
+            }
+        }
+
+        // アルキメデスの螺旋パス（12時から反時計回り、蚊取り線香型）を動的生成する
+        function generateSpiralPath(turns, startRadius, endRadius) {
+            const cx = 200, cy = 200;
+            const points = [];
+            const steps = 180 * turns; // 1周あたり180段階の高精度描画
+            const startAngle = -Math.PI / 2; // 12時の位置からスタート
+
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps; // 0.00 〜 1.00
+                const angle = startAngle - t * turns * 2 * Math.PI; // 反時計回りにturns周分回転
+                const r = startRadius - t * (startRadius - endRadius); // 半径が外側から内側へ滑らかに減少
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
+                points.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
+            }
+            return points.join(' ');
+        }
+
+        // リングの数（一重〜大）を変更（再生中であっても変更可能）
+        function setRingCount(count) {
+            if (isFinished) return; // アラーム鳴動中のみ変更不可
+            ringCount = count;
+            
+            // コントロールパネル側のボタンのアクティブ表現切り替え
+            const buttons = [
+                { btn: document.getElementById('btn-ring-1'), count: 1 },
+                { btn: document.getElementById('btn-ring-2'), count: 2 },
+                { btn: document.getElementById('btn-ring-3'), count: 3 },
+                { btn: document.getElementById('btn-ring-4'), count: 4 },
+                { btn: document.getElementById('btn-ring-5'), count: 5 },
+                { btn: document.getElementById('btn-ring-6'), count: 6 }
+            ];
+
+            buttons.forEach(item => {
+                if (item.btn) {
+                    if (item.count === count) {
+                        item.btn.className = "py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow";
+                    } else {
+                        item.btn.className = "py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white";
+                    }
+                }
+            });
+
+            // 開始時上部側のボタンのアクティブ表現切り替え
+            const activeButtons = [
+                { btn: document.getElementById('btn-active-ring-1'), count: 1 },
+                { btn: document.getElementById('btn-active-ring-2'), count: 2 },
+                { btn: document.getElementById('btn-active-ring-3'), count: 3 },
+                { btn: document.getElementById('btn-active-ring-4'), count: 4 },
+                { btn: document.getElementById('btn-active-ring-5'), count: 5 },
+                { btn: document.getElementById('btn-active-ring-6'), count: 6 }
+            ];
+
+            activeButtons.forEach(item => {
+                if (item.btn) {
+                    if (item.count === count) {
+                        item.btn.className = "px-4 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow";
+                    } else {
+                        item.btn.className = "px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white";
+                    }
+                }
+            });
+
+            // リング数表示ラベルの更新
+            if (count === 1) {
+                ringCountLabel.textContent = "一重";
+            } else if (count === 2) {
+                ringCountLabel.textContent = "二重";
+            } else if (count === 3) {
+                ringCountLabel.textContent = "三重";
+            } else if (count === 4) {
+                ringCountLabel.textContent = "四重";
+            } else if (count === 5) {
+                ringCountLabel.textContent = "五重";
+            } else if (count === 6) {
+                ringCountLabel.textContent = "大";
+            }
+
+            updateRingDisplay();
+            updateTimerVisuals();
+        }
+
+        // 各リング数に合わせた美しい背景ガイドラインまたは「大」円盤を適用
+        function updateRingDisplay() {
+            if (ringCount === 6) {
+                // 「大」モード：螺旋パスは隠し、円盤を表示
+                spiralGuide.style.display = 'none';
+                spiralActive.style.display = 'none';
+                solidGuide.style.display = 'block';
+                solidActive.style.display = 'block';
+
+                // 従来の同心円背景ガイドラインを非表示
+                for (let i = 1; i <= 5; i++) {
+                    const bgCircle = document.getElementById(`bg-circle-${i}`);
+                    if (bgCircle) {
+                        bgCircle.style.display = 'none';
+                    }
+                }
+                return;
+            }
+
+            // 通常モード
+            spiralGuide.style.display = 'block';
+            spiralActive.style.display = 'block';
+            solidGuide.style.display = 'none';
+            solidActive.style.display = 'none';
+
+            let turns = ringCount;
+            let startR = rOuter;
+            let endR = rOuter - (ringCount - 1) * 30; // 1周ごとに半径を30ずつ小さくする
+
+            // ガイドライン用のフル螺旋を生成・適用
+            const pathD = generateSpiralPath(turns, startR, endR);
+            spiralGuide.setAttribute('d', pathD);
+
+            // ガイドライン（薄い灰色の円）の表示連動
+            for (let i = 1; i <= 5; i++) {
+                const bgCircle = document.getElementById(`bg-circle-${i}`);
+                if (bgCircle) {
+                    bgCircle.style.display = i <= ringCount ? 'block' : 'none';
+                }
+            }
+        }
+
+        // プリセットボタン
+        function setPreset(minutes) {
+            if (isRunning || isFinished) return;
+            selectHours.value = 0;
+            selectMinutes.value = minutes;
+            selectSeconds.value = 0;
+            handleInputChange();
+        }
+
+        // プルダウン変更 of 同期
+        function handleInputChange() {
+            let h = parseInt(selectHours.value) || 0;
+            let m = parseInt(selectMinutes.value) || 0;
+            let s = parseInt(selectSeconds.value) || 0;
+
+            totalDurationSeconds = (h * 3600) + (m * 60) + s;
+            if (totalDurationSeconds <= 0) {
+                totalDurationSeconds = 1;
+            }
+            
+            remainingSeconds = totalDurationSeconds;
+
+            let text = "";
+            if (h > 0) text += `${h}時間 `;
+            if (m > 0 || h > 0) text += `${m}分 `;
+            text += `${s}秒`;
+            targetTimeDisplay.textContent = text;
+
+            updateTimerVisuals();
+        }
+
+        // インプット（プルダウン）値を秒から逆算して同期
+        function syncSelectsToDuration() {
+            const h = Math.floor(remainingSeconds / 3600);
+            const m = Math.floor((remainingSeconds % 3600) / 60);
+            const s = Math.floor(remainingSeconds % 60);
+
+            selectHours.value = h;
+            selectMinutes.value = m;
+            selectSeconds.value = s;
+
+            let text = "";
+            if (h > 0) text += `${h}時間 `;
+            if (m > 0 || h > 0) text += `${m}分 `;
+            text += `${s}秒`;
+            targetTimeDisplay.textContent = text;
+        }
+
+        // デジタル表示のフォーマット
+        function formatDigitalTime(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = Math.floor(sec % 60);
+
+            if (h > 0) {
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            } else {
+                return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+        }
+
+        // タイマー完了予定時刻の更新
+        function updateScheduledTime() {
+            if (!isRunning) {
+                scheduledBell.classList.add('opacity-0');
+                scheduledBell.classList.remove('opacity-100');
+                return;
+            }
+
+            const now = new Date();
+            const future = new Date(now.getTime() + remainingSeconds * 1000);
+            const h = String(future.getHours()).padStart(2, '0');
+            const m = String(future.getMinutes()).padStart(2, '0');
+            
+            scheduledTime.textContent = `${h}:${m}`;
+            scheduledBell.classList.remove('opacity-0');
+            scheduledBell.classList.add('opacity-100');
+        }
+
+        // コントロールパネルの表示/非表示（タイマー開始時は設定パネル全体を隠し、上部にコンパクトなリング切替を表示）
+        function updateControlPanelVisibility() {
+            const isPlayingOrFinished = isRunning || isFinished;
+            const controlPanel = document.getElementById('control-panel');
+            const activeRingSelector = document.getElementById('active-ring-selector');
+
+            if (isPlayingOrFinished) {
+                // 開始時は左側のコントロールパネル全体を非表示にする
+                if (controlPanel) controlPanel.classList.add('hidden');
+                // 上部のコンパクトな切り替えボタンを表示
+                if (activeRingSelector) {
+                    activeRingSelector.classList.remove('hidden');
+                    activeRingSelector.classList.add('flex');
+                }
+                
+                // タイマー画面を画面いっぱいに広く使うために、max-width制限を動的に拡大する
+                if (timerContainer) {
+                    timerContainer.classList.remove('max-w-[min(420px,50vh)]');
+                    timerContainer.classList.add('max-w-[min(650px,80vh)]');
+                }
+            } else {
+                // 停止・設定中は左側のコントロールパネル全体を表示する
+                if (controlPanel) controlPanel.classList.remove('hidden');
+                // 上部のコンパクトな切り替えボタンを非表示
+                if (activeRingSelector) {
+                    activeRingSelector.classList.add('hidden');
+                    activeRingSelector.classList.remove('flex');
+                }
+                
+                // 元のサイズへ戻す
+                if (timerContainer) {
+                    timerContainer.classList.remove('max-w-[min(650px,80vh)]');
+                    timerContainer.classList.add('max-w-[min(420px,50vh)]');
+                }
+            }
+        }
+
+        // 残り時間（割合）に基づいて、外側が削れた残りの螺旋パスのみを動的に生成する関数 (シームレス端点ブレンド補間仕様)
+        function generateSpiralRemainingPath(turns, startRadius, endRadius, progress) {
+            if (progress <= 0) return '';
+            
+            const cx = 200, cy = 200;
+            const points = [];
+            const steps = 180 * turns;
+            const startAngle = -Math.PI / 2;
+
+            // 残り割合に応じた正確な位置を算出
+            const tStart = 1.0 - progress;
+
+            // 1. 完全連続的な補間処理により、開始端点の座標を精密に算出（ガタつきを100%排除）
+            const angleStart = startAngle - tStart * turns * 2 * Math.PI;
+            const rStart = startRadius - tStart * (startRadius - endRadius);
+            const xStart = cx + rStart * Math.cos(angleStart);
+            const yStart = cy + rStart * Math.sin(angleStart);
+
+            // スタート位置を追加
+            points.push(`M ${xStart.toFixed(2)} ${yStart.toFixed(2)}`);
+
+            // 2. 次の整数ステップから残りの螺旋パス要素へ滑らかに結ぶ
+            const startStep = Math.ceil(tStart * steps);
+            for (let i = startStep; i <= steps; i++) {
+                const t = i / steps; // 0.00 〜 1.00
+                const angle = startAngle - t * turns * 2 * Math.PI; // 反時計回り
+                const r = startRadius - t * (startRadius - endRadius);
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
+                
+                points.push(`L ${x.toFixed(2)} ${y.toFixed(2)}`);
+            }
+            return points.join(' ');
+        }
+
+        // 円形（らせん・円盤）タイマーの進捗ビジュアル描画 (動的パス描画アプローチ)
+        function updateTimerVisuals() {
+            // デジタルテキスト
+            timerText.textContent = formatDigitalTime(Math.ceil(remainingSeconds));
+            
+            // 小数点（ミリ秒進捗）
+            const fraction = remainingSeconds % 1;
+            subMilliText.textContent = "." + Math.floor(fraction * 10);
+
+            // 全体の残り割合（1.00 〜 0.00）
+            // 一時停止中、設定中、動作中すべてで常に「現在の残り時間」を元に正しく進捗を計算（見た目の崩れを完全解消）
+            const overallProgress = totalDurationSeconds > 0 ? (remainingSeconds / totalDurationSeconds) : 0;
+
+            if (ringCount === 6) {
+                // 【大】モード：扇形の「描画される範囲（残り部分）」が左側（反時計回り）に向けて減っていく仕様
+                if (overallProgress <= 0) {
+                    solidActive.setAttribute('d', '');
+                    return;
+                }
+                if (overallProgress >= 0.999) {
+                    // フル表示（12時の線から時計回りに360度一周する正円盤。端点が重なるバグを避けるため終点を199.99に設定して完全に整える）
+                    solidActive.setAttribute('d', 'M 200 200 L 200 25 A 175 175 0 1 1 199.99 25 Z');
+                    return;
+                }
+                const R = 175;
+                const theta0 = -Math.PI / 2; // 12時の起点（上部）
+                
+                // 起点（12時）から時計回り方向にスライスを割り当て
+                // 時間の減少（progressの減少）に合わせて、スライス範囲の終点（x, y）が
+                // 時計方向から、左向き（反時計回り）に引き戻されるように移動します。
+                const theta1 = theta0 + overallProgress * 2 * Math.PI;
+                const x = 200 + R * Math.cos(theta1);
+                const y = 200 + R * Math.sin(theta1);
+                const largeArc = overallProgress > 0.5 ? 1 : 0;
+                
+                // 12時の位置から(x, y)まで時計回り（sweep-flag = 1）に扇形を塗りつぶし描画
+                const d = `M 200 200 L 200 25 A 175 175 0 ${largeArc} 1 ${x.toFixed(2)} ${y.toFixed(2)} Z`;
+                solidActive.setAttribute('d', d);
+            } else {
+                // 通常スパイラルモード
+                let turns = ringCount;
+                let startR = rOuter;
+                let endR = rOuter - (ringCount - 1) * 30; // 1周ごとに半径を30ずつ小さくする
+
+                // パスデータ自体の動的な反時計回り再計算
+                const activeD = generateSpiralRemainingPath(turns, startR, endR, overallProgress);
+                spiralActive.setAttribute('d', activeD);
+            }
+        }
+
+        // 右側：開始 / 一時停止 / 停止アクションのハンドラー
+        function handleStartClick() {
+            if (isFinished) {
+                stopTimerAndAlarm();
+            } else {
+                toggleTimer();
+            }
+        }
+
+        // 左側：キャンセル / リセットボタンのハンドラー
+        function handleCancelClick() {
+            if (isFinished) {
+                stopTimerAndAlarm();
+            } else {
+                resetTimer();
+            }
+        }
+
+        // 高精度アニメーションループ用 (requestAnimationFrame)
+        function runTimerAnimation(timestamp) {
+            if (!isRunning) return;
+
+            if (!lastTimestamp) {
+                lastTimestamp = timestamp;
+            }
+
+            // 経過時間を秒単位で計算（完全に滑らかな時間計算）
+            const elapsed = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            remainingSeconds -= elapsed;
+
+            if (remainingSeconds <= 0) {
+                remainingSeconds = 0;
+                updateTimerVisuals();
+                timerComplete();
+            } else {
+                updateTimerVisuals();
+                animationFrameId = requestAnimationFrame(runTimerAnimation);
+            }
+        }
+
+        // タイマー開始・一時停止のトグル
+        function toggleTimer() {
+            initAudio();
+
+            if (isRunning) {
+                // 一時停止処理
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                isRunning = false;
+                startBtnText.textContent = "再開";
+                startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none";
+                
+                // プルダウンのロック解除
+                enableSelectControls();
+                updateScheduledTime();
+                updateTimerVisuals(); 
+                updateControlPanelVisibility();
+            } else {
+                // 開始・再開処理
+                if (remainingSeconds <= 0) {
+                    remainingSeconds = totalDurationSeconds;
+                }
+                
+                isRunning = true;
+                isFinished = false;
+                startBtnText.textContent = "一時停止";
+                startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-amber-950/80 border border-amber-800/80 flex flex-col items-center justify-center text-amber-500 hover:bg-amber-900 transition active:scale-95 focus:outline-none";
+                
+                // 実行中に間違えて触れないようプルダウンをロック
+                disableSelectControls();
+                updateScheduledTime();
+                updateTimerVisuals();
+                updateControlPanelVisibility();
+
+                // アニメーションループを開始
+                lastTimestamp = performance.now();
+                animationFrameId = requestAnimationFrame(runTimerAnimation);
+            }
+        }
+
+        // プルダウン操作の制限
+        function disableSelectControls() {
+            selectHours.disabled = true;
+            selectMinutes.disabled = true;
+            selectSeconds.disabled = true;
+            selectHours.classList.add('opacity-50', 'cursor-not-allowed');
+            selectMinutes.classList.add('opacity-50', 'cursor-not-allowed');
+            selectSeconds.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        function enableSelectControls() {
+            selectHours.disabled = false;
+            selectMinutes.disabled = false;
+            selectSeconds.disabled = false;
+            selectHours.classList.remove('opacity-50', 'cursor-not-allowed');
+            selectMinutes.classList.remove('opacity-50', 'cursor-not-allowed');
+            selectSeconds.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        // タイマー完了（無限アラームの開始フェーズ）
+        function timerComplete() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            isRunning = false;
+            isFinished = true; 
+            
+            // UIをアラーム用の「停止」ボタンに変更
+            startBtnText.textContent = "停止";
+            startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-600 border-2 border-red-400 flex flex-col items-center justify-center text-white font-black hover:bg-red-700 transition active:scale-95 focus:outline-none animate-pulse-red z-20";
+            
+            startAlarmLoop(soundSelect.value);
+
+            toastMessage.classList.remove('translate-y-10', 'opacity-0');
+            toastMessage.classList.add('translate-y-0', 'opacity-100');
+            updateControlPanelVisibility();
+        }
+
+        // アラームを停止して通常画面に戻る
+        function stopTimerAndAlarm() {
+            stopAlarmLoop();
+            isFinished = false;
+            
+            toastMessage.classList.remove('translate-y-0', 'opacity-100');
+            toastMessage.classList.add('translate-y-10', 'opacity-0');
+
+            resetTimer();
+        }
+
+        // 完全リセット
+        function resetTimer() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            stopAlarmLoop();
+            
+            isRunning = false;
+            isFinished = false;
+            remainingSeconds = totalDurationSeconds;
+            
+            startBtnText.textContent = "開始";
+            startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none";
+            
+            enableSelectControls();
+            syncSelectsToDuration();
+            updateScheduledTime();
+            updateTimerVisuals();
+            updateControlPanelVisibility();
+        }
+
+        // 起動時イニシャライズ
+        window.onload = () => {
+            initApp();
+        };
+    </script>
 </body>
 </html>
