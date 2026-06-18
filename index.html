@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>タイムタイマー</title>
+<title>ビジュアル タイムタイマー</title>
 <!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- Lucide Icons -->
@@ -36,7 +36,7 @@ animation: pulse-red 1.5s infinite;
 </head>
 <body class="bg-black text-white h-full flex flex-col font-sans select-none overflow-hidden">
 
-<!-- メインコンテンツ -->
+<!-- メメインコンテンツ -->
 <main class="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 lg:p-8 gap-6 lg:gap-12 overflow-y-auto">
 
 <!-- 左側：コントロールパネル（設定） -->
@@ -86,21 +86,27 @@ animation: pulse-red 1.5s infinite;
 </div>
 </div>
 
-<!-- 動く部分の構成（一重・二重・三重） -->
+<!-- 動く部分の構成（一重〜五重） -->
 <div class="space-y-3">
 <div class="flex justify-between text-sm text-zinc-400 font-medium">
 <span>視覚リング数</span>
 <span id="ring-count-label" class="text-orange-500 font-bold">一重</span>
 </div>
-<div class="grid grid-cols-3 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80">
-<button onclick="setRingCount(1)" id="btn-ring-1" class="py-2 text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow">
+<div class="grid grid-cols-5 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80">
+<button onclick="setRingCount(1)" id="btn-ring-1" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow">
 一重
 </button>
-<button onclick="setRingCount(2)" id="btn-ring-2" class="py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+<button onclick="setRingCount(2)" id="btn-ring-2" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
 二重
 </button>
-<button onclick="setRingCount(3)" id="btn-ring-3" class="py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+<button onclick="setRingCount(3)" id="btn-ring-3" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
 三重
+</button>
+<button onclick="setRingCount(4)" id="btn-ring-4" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+四重
+</button>
+<button onclick="setRingCount(5)" id="btn-ring-5" class="py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+五重
 </button>
 </div>
 </div>
@@ -119,11 +125,13 @@ animation: pulse-red 1.5s infinite;
 
 <!-- 右側：メインビジュアルタイマー画面（高さと幅の比率を考慮したレスポンシブ設計） -->
 <div class="flex-1 w-full flex flex-col items-center justify-center p-2">
-<!-- タイマー開始時に上部に小さく表示されるコンパクトなリング数切替バー（重なりによる無効化を防ぐため、relativeとz-50を指定） -->
-<div id="active-ring-selector" class="hidden relative mb-4 bg-zinc-900/90 border border-zinc-800/80 rounded-full p-1 items-center space-x-1 shadow-2xl z-50 pointer-events-auto transition-all duration-300">
-<button onclick="setRingCount(1)" id="btn-active-ring-1" class="px-4 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow">一重</button>
-<button onclick="setRingCount(2)" id="btn-active-ring-2" class="px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">二重</button>
-<button onclick="setRingCount(3)" id="btn-active-ring-3" class="px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">三重</button>
+<!-- タイマー開始時に上部に小さく表示されるコンパクトなリング数切替バー -->
+<div id="active-ring-selector" class="hidden mb-4 bg-zinc-900/90 border border-zinc-800/80 rounded-full p-1 items-center space-x-1 shadow-2xl z-30 transition-all duration-300">
+<button onclick="setRingCount(1)" id="btn-active-ring-1" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow">一重</button>
+<button onclick="setRingCount(2)" id="btn-active-ring-2" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">二重</button>
+<button onclick="setRingCount(3)" id="btn-active-ring-3" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">三重</button>
+<button onclick="setRingCount(4)" id="btn-active-ring-4" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">四重</button>
+<button onclick="setRingCount(5)" id="btn-active-ring-5" class="px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">五重</button>
 </div>
 
 <!-- アプリ表示用コンテナ（画面の高さに合わせて絶対に周囲と被らないサイズに自動縮小、開始時は大きく展開） -->
@@ -131,6 +139,13 @@ animation: pulse-red 1.5s infinite;
 
 <!-- リング用SVG（蚊取り線香螺旋パスを使用） -->
 <svg class="absolute w-full h-full p-2" viewBox="0 0 400 400">
+<!-- 背景の薄いガイドラインとしての同心円（最大五重まで動的連動） -->
+<circle id="bg-circle-1" cx="200" cy="200" r="175" fill="none" stroke="#18181b" stroke-width="2"/>
+<circle id="bg-circle-2" cx="200" cy="200" r="145" fill="none" stroke="#18181b" stroke-width="1.5"/>
+<circle cx="200" cy="200" r="115" id="bg-circle-3" fill="none" stroke="#18181b" stroke-width="1"/>
+<circle id="bg-circle-4" cx="200" cy="200" r="85" fill="none" stroke="#18181b" stroke-width="1"/>
+<circle id="bg-circle-5" cx="200" cy="200" r="55" fill="none" stroke="#18181b" stroke-width="1"/>
+
 <!-- 背景の薄いガイドラインとしての蚊取り線香螺旋 -->
 <path id="spiral-guide" fill="none" stroke="#1c1917" stroke-width="10" stroke-linecap="round" opacity="0.4" />
 
@@ -414,12 +429,10 @@ let isRunning = false;
 let isFinished = false; // アラーム作動状態
 let animationFrameId = null; // requestAnimationFrame用ID
 let lastTimestamp = 0; // ループ制御用タイムスタンプ
-let ringCount = 1; // 1: 一重, 2: 二重, 3: 三重
+let ringCount = 1; // 1: 一重, 2: 二重, 3: 三重, 4: 四重, 5: 五重
 
 // SVGリングの基本パラメータ
 const rOuter = 175;
-const rMiddle = 145;
-const rInner = 115;
 
 // 初期設定
 function initApp() {
@@ -517,7 +530,7 @@ points.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
 return points.join(' ');
 }
 
-// リングの数（一重・二重・三重）を変更（再生中であっても変更可能）
+// リングの数（一重〜五重）を変更（再生中であっても変更可能）
 function setRingCount(count) {
 if (isFinished) return; // アラーム鳴動中のみ変更不可
 ringCount = count;
@@ -526,15 +539,17 @@ ringCount = count;
 const buttons = [
 { btn: document.getElementById('btn-ring-1'), count: 1 },
 { btn: document.getElementById('btn-ring-2'), count: 2 },
-{ btn: document.getElementById('btn-ring-3'), count: 3 }
+{ btn: document.getElementById('btn-ring-3'), count: 3 },
+{ btn: document.getElementById('btn-ring-4'), count: 4 },
+{ btn: document.getElementById('btn-ring-5'), count: 5 }
 ];
 
 buttons.forEach(item => {
 if (item.btn) {
 if (item.count === count) {
-item.btn.className = "py-2 text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow";
+item.btn.className = "py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow";
 } else {
-item.btn.className = "py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white";
+item.btn.className = "py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white";
 }
 }
 });
@@ -543,15 +558,17 @@ item.btn.className = "py-2 text-xs font-bold rounded-lg transition-all text-zinc
 const activeButtons = [
 { btn: document.getElementById('btn-active-ring-1'), count: 1 },
 { btn: document.getElementById('btn-active-ring-2'), count: 2 },
-{ btn: document.getElementById('btn-active-ring-3'), count: 3 }
+{ btn: document.getElementById('btn-active-ring-3'), count: 3 },
+{ btn: document.getElementById('btn-active-ring-4'), count: 4 },
+{ btn: document.getElementById('btn-active-ring-5'), count: 5 }
 ];
 
 activeButtons.forEach(item => {
 if (item.btn) {
 if (item.count === count) {
-item.btn.className = "px-4 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow";
+item.btn.className = "px-3.5 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow";
 } else {
-item.btn.className = "px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white";
+item.btn.className = "px-3.5 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white";
 }
 }
 });
@@ -563,6 +580,10 @@ ringCountLabel.textContent = "一重";
 ringCountLabel.textContent = "二重";
 } else if (count === 3) {
 ringCountLabel.textContent = "三重";
+} else if (count === 4) {
+ringCountLabel.textContent = "四重";
+} else if (count === 5) {
+ringCountLabel.textContent = "五重";
 }
 
 updateRingDisplay();
@@ -573,14 +594,19 @@ updateTimerVisuals();
 function updateRingDisplay() {
 let turns = ringCount;
 let startR = rOuter;
-let endR = rOuter;
-
-if (ringCount === 2) endR = rMiddle;
-if (ringCount === 3) endR = rInner;
+let endR = rOuter - (ringCount - 1) * 30; // 1周ごとに半径を30ずつ小さくする
 
 // ガイドライン用のフル螺旋を生成・適用
 const pathD = generateSpiralPath(turns, startR, endR);
 spiralGuide.setAttribute('d', pathD);
+
+// ガイドライン（薄い灰色の円）の表示連動
+for (let i = 1; i <= 5; i++) {
+const bgCircle = document.getElementById(`bg-circle-${i}`);
+if (bgCircle) {
+bgCircle.style.display = i <= ringCount ? 'block' : 'none';
+}
+}
 }
 
 // プリセットボタン
@@ -751,10 +777,7 @@ const overallProgress = (isRunning && !isFinished)
 // 残り割合に合わせ、表示するスパイラルパラメータを計算
 let turns = ringCount;
 let startR = rOuter;
-let endR = rOuter;
-
-if (ringCount === 2) endR = rMiddle;
-if (ringCount === 3) endR = rInner;
+let endR = rOuter - (ringCount - 1) * 30; // 1周ごとに半径を30ずつ小さくする
 
 // パスデータ自体の動的な反時計回り再計算
 const activeD = generateSpiralRemainingPath(turns, startR, endR, overallProgress);
