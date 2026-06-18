@@ -1,898 +1,926 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="robots" content="noindex">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>複数パターン画像クリエイター with Nano Banana 2</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <!-- PDF.js の追加 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&display=swap');
-        
-        /* 背景を完全な黒に変更し、基本文字色を白に */
-        body { font-family: 'Zen Kaku Gothic New', 'Plus Jakarta Sans', sans-serif; background: #000000; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; }
-        
-        /* ガラス効果の背景を少し濃くし、境界線を明るくして視認性向上 */
-        .glass { background: rgba(20, 20, 20, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.15); }
-        
-        .banana-text { background: linear-gradient(135deg, #fcd34d, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .style-btn { transition: all 0.2s; }
-        .style-btn:hover { transform: translateY(-2px); border-color: #fbbf24; }
-        .style-btn.active { border-color: #fbbf24; background-color: rgba(251, 191, 36, 0.15); color: #fbbf24; box-shadow: 0 0 20px rgba(251, 191, 36, 0.1); }
-        .loading-ring { border: 3px solid rgba(251, 191, 36, 0.2); border-top: 3px solid #fbbf24; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* カスタムスクロールバー */
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* トースト通知 */
-        #toast {
-            visibility: hidden;
-            min-width: 250px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 16px;
-            position: fixed;
-            z-index: 50;
-            left: 50%;
-            bottom: 30px;
-            transform: translateX(-50%);
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s, bottom 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        #toast.show {
-            visibility: visible;
-            opacity: 1;
-            bottom: 50px;
-        }
-
-        /* 番号バッジ */
-        .step-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            font-size: 16px;
-            font-weight: 800;
-            margin-right: 8px;
-            flex-shrink: 0;
-            line-height: 1;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        /* ① 黒地に黄色文字 */
-        .step-badge-1 {
-            background-color: #000;
-            color: #fbbf24;
-            border: 2px solid #fbbf24;
-        }
-        /* ② 黄色地に黒文字 */
-        .step-badge-2 {
-            background-color: #fbbf24;
-            color: #000;
-        }
-        /* ③ 白地に黒文字 */
-        .step-badge-3 {
-            background-color: #ffffff;
-            color: #000;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ビジュアル タイムタイマー</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+/* スムーズなアニメーション用のカスタムスタイル（不要なCSSトランジションを削除してシームレスな動的描画に特化） */
+.circle-ring {
+transform-origin: 50% 50%;
+}
+/* 極太フォントの調整 */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@200;400;700&display=swap');
+.font-mono-custom {
+font-family: 'JetBrains Mono', monospace, sans-serif;
+}
+/* アラーム鳴動中の停止ボタン点滅アニメーション */
+@keyframes pulse-red {
+0%, 100% {
+transform: scale(1);
+box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+}
+50% {
+transform: scale(1.05);
+box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0);
+}
+}
+.animate-pulse-red {
+animation: pulse-red 1.5s infinite;
+}
+</style>
 </head>
-<body class="p-4 md:p-8 lg:p-12 relative">
-
-    <div class="max-w-7xl mx-auto w-full flex-grow">
-        <header class="mb-12 text-center">
-            <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">
-                複数パターン画像クリエイター <span class="text-white text-2xl md:text-4xl block md:inline mt-2 md:mt-0">with <span class="banana-text">Nano Banana 2</span></span>
-            </h1>
-            <p class="text-gray-400 text-base md:text-xl font-medium">手描きイラストから超リアル写真まで。12種類の画風でグリッド画像を生成。</p>
-        </header>
-
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8">
-            
-            <!-- 左カラム: 入力 -->
-            <div class="xl:col-span-4 space-y-6">
-                
-                <!-- 著作権注意 -->
-                <div class="bg-red-900/30 border border-red-500/60 rounded-2xl p-4 flex items-start gap-3 shadow-lg backdrop-blur-sm">
-                    <i data-lucide="alert-triangle" class="w-6 h-6 text-red-400 flex-shrink-0"></i>
-                    <p class="text-sm font-bold text-red-100 leading-snug">
-                        ⚠️ 著作権に注意：キャラクターや有名人に似た画像は「学校HP・SNS・お便り等」への掲載禁止！
-                    </p>
-                </div>
-
-                <!-- 分割数設定 -->
-                <div class="glass p-5 rounded-3xl shadow-xl border border-gray-700">
-                    <label class="text-xs font-bold text-gray-400 mb-3 block uppercase tracking-wide">分割数設定</label>
-                    <div class="flex bg-gray-900 rounded-lg p-1.5 gap-1">
-                        <button onclick="setGridMode(4)" id="btnGrid4" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-amber-600 text-white shadow-sm transition-all">4分割</button>
-                        <button onclick="setGridMode(6)" id="btnGrid6" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white transition-all">6分割</button>
-                        <button onclick="setGridMode(8)" id="btnGrid8" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white transition-all">8分割</button>
-                    </div>
-                </div>
-
-                <div class="glass p-6 md:p-8 rounded-3xl shadow-xl">
-                    <!-- 更新ボタン -->
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-bold flex items-center gap-3 text-white">
-                            <i data-lucide="file-input" class="text-amber-400 w-6 h-6"></i> ソース入力
-                        </h2>
-                        <button onclick="resetApp()" class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-gray-700 hover:border-gray-500 transition-all text-xs font-bold group">
-                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500"></i>
-                            <span>リセット</span>
-                        </button>
-                    </div>
-                    
-                    <!-- シチュエーション入力エリア -->
-                    <div class="mb-6">
-                        <label class="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wide flex items-center gap-2">
-                            <i data-lucide="message-square" class="w-3 h-3 text-amber-400"></i> 具体的なシチュエーション・補足
-                        </label>
-                        <textarea id="manualText" rows="6" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-base text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-gray-600 transition-all mb-3" placeholder="例１：歩く、走る、電話をする、転ぶ、巴投げ、凧揚げ、バナナをむく、かめはめ波&#10;例２：高校生が友達と２人で口論している&#10;例３：桶狭間の戦いで織田信長が勝利した場面"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 中央カラム: スタイル選択 -->
-            <div class="xl:col-span-5 space-y-6">
-                <div class="glass p-6 md:p-8 rounded-3xl shadow-xl h-full flex flex-col">
-                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3 text-white">
-                        <i data-lucide="palette" class="text-amber-400 w-6 h-6"></i> スタイル選択
-                    </h2>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-grow content-start" id="styleGrid">
-                        <!-- スタイルボタンはJSで生成 -->
-                    </div>
-
-                    <!-- SELECTED STYLE -->
-                    <div class="mt-8 pt-6 border-t border-gray-700">
-                        <p class="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wide">SELECTED STYLE</p>
-                        <p id="currentStyleName" class="text-xl font-bold text-amber-400">手描きイラスト風 (Sketch)</p>
-                        <p id="currentStyleDesc" class="text-sm text-gray-300 mt-2 leading-relaxed opacity-90">鉛筆のタッチやラフな線を活かした、温かみのあるスケッチスタイル。</p>
-                    </div>
-
-                    <!-- 詳細設定エリア (SELECTED STYLEの下) -->
-                    <div class="mt-6 pt-6 border-t border-gray-700 space-y-6">
-                        
-                        <!-- キャラクター構成 -->
-                        <div class="p-5 bg-gray-800/50 rounded-xl border border-gray-700">
-                            <label class="text-xs font-bold text-gray-400 mb-3 block uppercase tracking-wide">キャラクター構成</label>
-                            <div class="flex bg-gray-900 rounded-lg p-1.5 gap-1 mb-4">
-                                <button onclick="setCharMode('diverse')" id="btnDiverse" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-gray-700 text-white shadow-sm transition-all">全コマ別キャラ</button>
-                                <button onclick="setCharMode('same')" id="btnSame" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white transition-all">同一人物</button>
-                                <button onclick="setCharMode('nochar')" id="btnNoChar" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white transition-all">キャラ不要</button>
-                            </div>
-                            
-                            <!-- 動的入力エリア -->
-                            <div id="charInputArea" class="space-y-3"></div>
-                        </div>
-
-                        <!-- 文字出力設定 -->
-                        <div class="p-5 bg-gray-800/50 rounded-xl border border-gray-700">
-                            <label class="text-xs font-bold text-gray-400 mb-3 block uppercase tracking-wide">文字出力設定</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="setTextMode('on')" id="btnTextOn" class="py-2.5 text-[10px] md:text-xs font-bold rounded-md text-gray-500 hover:text-white transition-all">文字あり</button>
-                                <button onclick="setTextMode('furigana')" id="btnTextFurigana" class="py-2.5 text-[10px] md:text-xs font-bold rounded-md text-gray-500 hover:text-white transition-all">文字あり（ルビ付）</button>
-                                <button onclick="setTextMode('hiragana')" id="btnTextHiragana" class="py-2.5 text-[10px] md:text-xs font-bold rounded-md text-gray-500 hover:text-white transition-all">文字あり（ひらがな）</button>
-                                <button onclick="setTextMode('off')" id="btnTextOff" class="py-2.5 text-[10px] md:text-xs font-bold rounded-md bg-red-900/80 text-white shadow-sm transition-all">文字なし</button>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-            <!-- 右カラム: 出力 -->
-            <div class="xl:col-span-3 space-y-6">
-                <div class="glass p-6 md:p-8 rounded-3xl shadow-xl h-full flex flex-col">
-                    
-                    <!-- 背景設定 (右カラムのボタンの上に移動) -->
-                    <div class="mb-4 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                                <i data-lucide="image" class="w-3 h-3 text-amber-400"></i> 背景設定
-                            </label>
-                            <span id="bgStatus" class="text-[10px] text-amber-400 font-bold">背景あり</span>
-                        </div>
-                        <div class="flex bg-gray-900 rounded-lg p-1.5 gap-1">
-                            <button onclick="setBgMode('on')" id="btnBgOn" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-amber-600 text-white shadow-sm transition-all">背景あり</button>
-                            <button onclick="setBgMode('off')" id="btnBgOff" class="flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white transition-all">背景なし (白)</button>
-                        </div>
-                        <p class="text-[10px] text-gray-500 mt-2 px-1">
-                            ※「背景なし」の場合、キャラと所持品以外は描画されず白背景になります。
-                        </p>
-                    </div>
-
-                    <!-- ① プロンプト生成ボタン -->
-                    <button id="processBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-lg font-bold py-5 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 mb-4 transform active:scale-95 group relative z-10 cursor-pointer">
-                        <span class="step-badge step-badge-1 group-hover:bg-black group-hover:text-white transition-colors">①</span>
-                        <span id="btnText" class="text-xl">プロンプト生成</span>
-                        <div id="loader" class="loading-ring hidden"></div>
-                    </button>
-
-                    <!-- ②Copy & ③Chat ボタンエリア -->
-                    <div class="grid grid-cols-1 gap-3 mb-4">
-                        <!-- ② Copyボタン -->
-                        <button id="copyBtn" class="w-full bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold py-4 rounded-xl border border-gray-600 transition-all flex items-center justify-center gap-2 hover:border-gray-500 group relative z-10 cursor-pointer">
-                            <span class="step-badge step-badge-2">②</span>
-                            <span>Copy</span>
-                            <i data-lucide="copy" class="w-4 h-4 ml-1"></i>
-                        </button>
-
-                        <!-- ③ 新しいチャットボタン (PC表示調整・中央寄せ・修正) -->
-                        <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" id="openChatBtn" class="w-full bg-blue-900/40 hover:bg-blue-800/60 text-blue-100 text-sm font-bold py-3 rounded-xl border border-blue-800/60 transition-all flex items-center justify-center gap-1 group hover:border-blue-500 hover:text-white relative z-10 cursor-pointer no-underline overflow-hidden">
-                            <div class="flex flex-col justify-center items-center text-center leading-tight min-w-0 flex-1">
-                                <div class="flex items-center justify-center gap-1">
-                                    <span class="step-badge step-badge-3 flex-shrink-0">③</span>
-                                    <span class="whitespace-nowrap">NEW Chat</span>
-                                    <i data-lucide="external-link" class="w-3.5 h-3.5 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                </div>
-                                <span class="text-[10px] font-normal opacity-80 whitespace-nowrap block w-full text-center">🍌画像生成＋高速モード（思考モード）</span>
-                            </div>
-                        </a>
-                    </div>
-
-                    <!-- 結果表示エリア -->
-                    <div class="flex-grow bg-black rounded-xl p-5 border border-gray-800 overflow-hidden flex flex-col relative min-h-[250px] mb-2">
-                        <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-800">
-                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">OUTPUT</span>
-                            <span class="text-[10px] text-gray-600">生成されたプロンプト</span>
-                        </div>
-                        <div class="relative flex-grow overflow-hidden">
-                            <pre id="promptResult" class="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed font-mono h-full overflow-y-auto scrollbar-hide pr-2">ここに生成されたプロンプトが表示されます。
-テキストを入力して「①プロンプト生成」を押してください。</pre>
-                        </div>
-                    </div>
-                    
-                    <p class="text-[10px] text-gray-500 text-center mt-1">
-                        コピーしたプロンプトをチャットに貼り付けてください
-                    </p>
-
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- トースト通知 -->
-    <div id="toast">Message here</div>
-
-    <script>
-        // PDF Worker設定
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        // アイコン初期化
-        lucide.createIcons();
-
-        // --- Config ---
-        // プロンプトを日本語ベースに変更。手書きイラストを目に優しいカラーに変更。
-        const styles = [
-            { id: 'irasutoya', icon: 'smile', label: 'いらすとや風', desc: 'フリーハンド感のある太めの線画と、優しい色使いが特徴のデフォルメスタイル。', prompt: '【画風: いらすとや風 (Irasutoya Style)】日本の有名なフリーイラスト素材集「いらすとや」のテイストを忠実に再現したイラスト。フリーハンド感のある太めの線画、ざらざらとした紙の質感、そして彩度を少し抑えた優しいカラーパレットが特徴。影は単純な丸や線で表現され、複雑な描写はない。非常にデフォルメされた、かわいらしくてコミカルな雰囲気を持つスタイル。' },
-            { id: 'stickman', icon: 'user', label: '棒人間', desc: '顔のない白い人型で描く、シンプルで視認性の高いアイコンスタイル。', prompt: '【画風: 棒人間・ピクトグラム (Stick Figure / Pictogram)】ポップで親しみやすいアイコンスタイル。顔のない白い人型が、少し太めの滑らかな輪郭線で描かれている。完全にフラットなデザインで、視認性が高いベクターイラストレーション。背景はシンプルに、情報の伝達を最優先する。' },
-            { id: 'sketch', icon: 'pencil', label: '本気手描き', desc: '鉛筆の柔らかなタッチと、目に優しいパステルカラー。温かみのある落ち着いたスケッチスタイル。', prompt: '【画風: ソフト・パステルスケッチ】鉛筆の柔らかな線画に、目に優しい淡いパステルカラーを乗せたスタイル。低彩度で落ち着いた色合い、温かみのある雰囲気、リラックスできる優しいトーン。' },
-            { id: 'linestamp', icon: 'message-circle', label: 'ゆるい手描き', desc: 'ゆるい手書きタッチと脱力感のある、ほのぼのとした癒し系スタンプスタイル。', prompt: '【画風: LINEスタンプ風 (LINE Sticker Style)】ゆるい手描きのイラストレーションスタイル、脱力感のあるかわいい雰囲気、ほのぼのとした癒し系、ラフで温かみのある線画、パステル調の優しい色彩、シンプルなデフォルメ、日本のカワイイ文化、白背景' },
-            { id: 'photo', icon: 'camera', label: '超リアル写真', desc: '8K解像度の実写スタイル。映画のようなライティングと質感。', prompt: '超リアルな写真、8k解像度、映画のようなライティング、35mmレンズで撮影、高精細な質感、フォトリアリスティック' },
-            { id: 'anime', icon: 'tv', label: '日本のアニメ', desc: 'セル画調の鮮やかな色彩とキャラクターデザイン。', prompt: '日本のアニメスタイル、セルシェーディング、鮮やかな色彩、スタジオジブリ風、高品質なアニメーションアート、繊細な背景美術' },
-            { id: 'watercolor', icon: 'droplet', label: '水彩画', desc: '滲みやグラデーションが美しい、芸術的な水彩スタイル。', prompt: '水彩画、柔らかいエッジ、ウェット・オン・ウェット技法、芸術的な絵具の滲み、淡い色彩、透明感のある着彩' },
-            { id: '3d', icon: 'box', label: '3Dキャラ/トイ', desc: 'ピクサーのような可愛らしく質感のある3Dレンダリング。', prompt: '3Dキャラクターレンダリング、ピクサー風、かわいいプロポーション、粘土の質感、ソフトなスタジオライティング、オクタンレンダリング' },
-            { id: 'pixel', icon: 'grid', label: 'ドット絵', desc: 'レトロゲームのようなピクセルアート。', prompt: 'ドット絵、16ビットレトロゲームスタイル、ディザリング、限定されたカラーパレット、ノスタルジックな美学、ピクセルアート' },
-            { id: 'ukiyo', icon: 'mountain', label: '浮世絵風', desc: '和紙の質感と日本画の構図を取り入れた伝統的スタイル。', prompt: '浮世絵スタイル、木版画の質感、日本の伝統芸術、和紙のテクスチャ、太い輪郭線、フラットな遠近法、淡い和の色合い' },
-            { id: 'oil', icon: 'brush', label: '油絵', desc: '重厚な筆致と深みのある色合いのクラシックスタイル。', prompt: '油絵、インパスト（厚塗り）の質感、見える筆致、古典的なアートスタイル、深みのある豊かな色彩、キャンバスの質感' },
-            { id: 'vector', icon: 'pen-tool', label: 'フラット', desc: 'シンプルでモダンなベクターイラスト。', prompt: 'フラットなベクターイラスト、きれいな線、ミニマリストデザイン、ソリッドカラー、現代的なグラフィックデザイン、シンプルで洗練されたスタイル' }
-        ];
-
-        let selectedStyle = styles[0]; // 初期設定: いらすとや風
-        let charMode = 'same';
-        let gridCount = 4; // 初期値は4分割
-        let textMode = 'off'; // デフォルトは「文字なし」
-        let bgMode = 'on'; // デフォルトは「背景あり」
-        let selectedFiles = []; // 変数としては残しておくがファイルは追加されない
-
-        // キャラクター構成の入力用デフォルト値
-        const defaultDiversePatterns = [
-            "赤ちゃん",
-            "園児",
-            "小学生",
-            "中学生",
-            "高校生",
-            "大学生",
-            "社会人",
-            "老人"
-        ];
-        const defaultSameCharText = "魅力的なオリジナルキャラクター";
-
-        let userDiverseInputs = [...defaultDiversePatterns];
-        let userSameInput = defaultSameCharText;
-
-        // --- Init UI ---
-        const styleGrid = document.getElementById('styleGrid');
-        
-        function renderStyles() {
-            styleGrid.innerHTML = '';
-            styles.forEach(s => {
-                const btn = document.createElement('button');
-                const isActive = s.id === selectedStyle.id;
-                btn.className = `style-btn p-3 rounded-xl border border-gray-700 bg-gray-800 text-left flex items-center gap-3 ${isActive ? 'active' : 'text-gray-400 hover:border-gray-500 hover:text-white'}`;
-                btn.innerHTML = `<i data-lucide="${s.icon}" class="w-5 h-5 flex-shrink-0"></i><span class="text-sm font-bold">${s.label}</span>`;
-                btn.onclick = () => selectStyle(s);
-                styleGrid.appendChild(btn);
-            });
-            lucide.createIcons();
-        }
-
-        function selectStyle(style) {
-            selectedStyle = style;
-            document.getElementById('currentStyleName').textContent = `${style.label}`;
-            document.getElementById('currentStyleDesc').textContent = style.desc;
-            renderStyles();
-        }
-
-        // キャラクター入力欄の動的描画
-        function renderCharInputs() {
-            const area = document.getElementById('charInputArea');
-            if (!area) return;
-            
-            area.innerHTML = '';
-            
-            if (charMode === 'diverse') {
-                for (let i = 0; i < gridCount; i++) {
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.id = `diverseChar${i}`;
-                    input.className = 'w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-gray-600 transition-all';
-                    input.value = userDiverseInputs[i];
-                    input.placeholder = `コマ ${i + 1} のキャラ指定`;
-                    
-                    let previousValue = userDiverseInputs[i];
-
-                    input.onfocus = (e) => { 
-                        previousValue = e.target.value;
-                        e.target.value = ''; 
-                    };
-                    input.oninput = (e) => { userDiverseInputs[i] = e.target.value; };
-                    input.onblur = (e) => {
-                        if (e.target.value.trim() === '') {
-                            e.target.value = previousValue;
-                            userDiverseInputs[i] = previousValue;
-                        }
-                    };
-                    
-                    const label = document.createElement('label');
-                    label.className = 'text-[10px] text-gray-500 mb-1 block';
-                    label.textContent = `コマ ${i + 1} のキャラ指定`;
-                    
-                    const div = document.createElement('div');
-                    div.appendChild(label);
-                    div.appendChild(input);
-                    area.appendChild(div);
-                }
-            } else if (charMode === 'same') {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.id = 'sameCharInput';
-                input.className = 'w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-gray-600 transition-all';
-                input.value = userSameInput;
-                input.placeholder = 'キャラクターの指定 (例: 制服を着た黒髪ショートの女の子)';
-                
-                let previousValue = userSameInput;
-
-                input.onfocus = (e) => { 
-                    previousValue = e.target.value;
-                    e.target.value = ''; 
-                };
-                input.oninput = (e) => { userSameInput = e.target.value; };
-                input.onblur = (e) => {
-                    if (e.target.value.trim() === '') {
-                        e.target.value = previousValue;
-                        userSameInput = previousValue;
-                    }
-                };
-                
-                const label = document.createElement('label');
-                label.className = 'text-[10px] text-gray-500 mb-1 block';
-                label.textContent = `キャラクターの指定`;
-                
-                const div = document.createElement('div');
-                div.appendChild(label);
-                div.appendChild(input);
-                area.appendChild(div);
-            }
-        }
-
-        function setGridMode(count) {
-            gridCount = count;
-            const b4 = document.getElementById('btnGrid4');
-            const b6 = document.getElementById('btnGrid6');
-            const b8 = document.getElementById('btnGrid8');
-
-            // Reset styles
-            [b4, b6, b8].forEach(btn => {
-                btn.className = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white hover:bg-gray-800 transition-all';
-            });
-
-            // Active style
-            const activeClass = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-amber-600 text-white shadow-sm border border-amber-500 transition-all';
-            
-            if (count === 4) b4.className = activeClass;
-            else if (count === 6) b6.className = activeClass;
-            else if (count === 8) b8.className = activeClass;
-
-            renderCharInputs(); // グリッド数変更時に入力欄を再描画
-        }
-
-        function setTextMode(mode) {
-            textMode = mode;
-            const bOn = document.getElementById('btnTextOn');
-            const bFurigana = document.getElementById('btnTextFurigana');
-            const bHiragana = document.getElementById('btnTextHiragana');
-            const bOff = document.getElementById('btnTextOff');
-
-            // Reset
-            [bOn, bFurigana, bHiragana, bOff].forEach(btn => {
-                btn.className = 'py-2.5 text-[10px] md:text-xs font-bold rounded-md text-gray-500 hover:text-white hover:bg-gray-800 transition-all border border-transparent';
-            });
-
-            // Active Styles
-            const activeClassOn = 'py-2.5 text-[10px] md:text-xs font-bold rounded-md bg-blue-600 text-white shadow-sm border border-blue-500 transition-all';
-            const activeClassFurigana = 'py-2.5 text-[10px] md:text-xs font-bold rounded-md bg-purple-600 text-white shadow-sm border border-purple-500 transition-all';
-            const activeClassHiragana = 'py-2.5 text-[10px] md:text-xs font-bold rounded-md bg-pink-600 text-white shadow-sm border border-pink-500 transition-all';
-            const activeClassOff = 'py-2.5 text-[10px] md:text-xs font-bold rounded-md bg-red-900/80 text-white shadow-sm border border-red-500/50 transition-all';
-
-            if (mode === 'on') {
-                bOn.className = activeClassOn;
-            } else if (mode === 'furigana') {
-                bFurigana.className = activeClassFurigana;
-            } else if (mode === 'hiragana') {
-                bHiragana.className = activeClassHiragana;
-            } else {
-                bOff.className = activeClassOff;
-            }
-        }
-
-        function setBgMode(mode) {
-            bgMode = mode;
-            const bOn = document.getElementById('btnBgOn');
-            const bOff = document.getElementById('btnBgOff');
-            const status = document.getElementById('bgStatus');
-
-            // Reset
-            [bOn, bOff].forEach(btn => {
-                btn.className = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white hover:bg-gray-800 transition-all';
-            });
-
-            // Active
-            const activeClassOn = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-amber-600 text-white shadow-sm border border-amber-500 transition-all';
-            // 背景なしは白っぽくする
-            const activeClassOff = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-gray-200 text-black shadow-sm border border-white transition-all';
-
-            if (mode === 'on') {
-                bOn.className = activeClassOn;
-                status.textContent = "背景あり";
-                status.className = "text-[10px] text-amber-400 font-bold";
-            } else {
-                bOff.className = activeClassOff;
-                status.textContent = "背景なし (白)";
-                status.className = "text-[10px] text-white font-bold";
-            }
-        }
-
-        function setCharMode(mode) {
-            charMode = mode;
-            const bD = document.getElementById('btnDiverse');
-            const bS = document.getElementById('btnSame');
-            const bN = document.getElementById('btnNoChar');
-            
-            // Reset all styles
-            [bD, bS, bN].forEach(btn => {
-                btn.className = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md text-gray-500 hover:text-white hover:bg-gray-800 transition-all';
-            });
-
-            // Set active style
-            const activeClass = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-gray-600 text-white shadow-sm border border-gray-500 transition-all';
-            const activeClassSame = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-blue-700 text-white shadow-sm border border-blue-500 transition-all';
-            const activeClassNoChar = 'flex-1 py-2.5 text-xs md:text-sm font-bold rounded-md bg-green-700 text-white shadow-sm border border-green-500 transition-all';
-
-            if(mode === 'diverse') {
-                bD.className = activeClass;
-            } else if (mode === 'same') {
-                bS.className = activeClassSame;
-            } else if (mode === 'nochar') {
-                bN.className = activeClassNoChar;
-            }
-
-            renderCharInputs(); // キャラクター構成変更時に入力欄を再描画
-        }
-
-        function showToast(message) {
-            const toast = document.getElementById("toast");
-            toast.textContent = message;
-            toast.className = "show";
-            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
-        }
-
-        // --- Processing Logic ---
-        document.getElementById('processBtn').onclick = async () => {
-            const manualText = document.getElementById('manualText').value;
-            const loader = document.getElementById('loader');
-            const btn = document.getElementById('processBtn');
-            const btnText = document.getElementById('btnText');
-            const resultArea = document.getElementById('promptResult');
-
-            // Validation
-            if (selectedFiles.length === 0 && !manualText.trim()) {
-                showToast("エラー: テキストを入力してください");
-                return;
-            }
-
-            // UI Loading State
-            loader.classList.remove('hidden');
-            btnText.textContent = "解析中...";
-            btn.classList.add('opacity-70', 'cursor-not-allowed');
-            btn.disabled = true;
-            resultArea.textContent = "解析を開始しています...\nこれには数秒〜数分かかる場合があります。";
-
-            let combinedText = manualText || "Creative concept"; 
-            let hasImageRef = false;
-
-            try {
-                if(selectedFiles.length > 0) {
-                    for (let i = 0; i < selectedFiles.length; i++) {
-                        const file = selectedFiles[i];
-                        btnText.textContent = `解析中 (${i+1}/${selectedFiles.length})...`;
-                        
-                        if (file.name.endsWith('.pptx')) {
-                            const pptText = await parsePPTX(file);
-                            combinedText += " " + pptText;
-                        } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-                            // PDF処理
-                            btnText.textContent = `PDF解析中...`;
-                            const pdfText = await parsePDF(file);
-                            combinedText += " " + pdfText;
-                        } else if (file.type.startsWith('image/')) {
-                            // 画像の場合はTesseractを使用
-                            hasImageRef = true;
-                            resultArea.textContent += `\n画像「${file.name}」から文字を読み取っています...`;
-                            const ocrText = await performOCR(file);
-                            combinedText += " " + ocrText;
-                        }
-                    }
-                }
-                
-                resultArea.textContent = "プロンプトを構築中...";
-                generatePrompt(combinedText, hasImageRef);
-                showToast("生成完了！");
-
-            } catch (err) {
-                console.error(err);
-                showToast("解析エラーが発生しました。コンソールを確認してください。");
-                resultArea.textContent = "エラーが発生しました: " + err.message;
-            } finally {
-                loader.classList.add('hidden');
-                btnText.textContent = "プロンプト生成";
-                btn.classList.remove('opacity-70', 'cursor-not-allowed');
-                btn.disabled = false;
-            }
-        };
-
-        async function parsePPTX(file) {
-            try {
-                const zip = await JSZip.loadAsync(file);
-                let text = "";
-                const slideFiles = Object.keys(zip.files).filter(n => n.startsWith('ppt/slides/slide'));
-                
-                // スライド番号順にソート (簡易的)
-                slideFiles.sort();
-
-                for (const name of slideFiles) {
-                    const xml = await zip.files[name].async("string");
-                    const doc = new DOMParser().parseFromString(xml, "text/xml");
-                    // パワーポイントのテキストノード (a:t) を抽出
-                    const slideText = Array.from(doc.getElementsByTagName("a:t"))
-                                                .map(t => t.textContent)
-                                                .join(" ");
-                    text += slideText + " ";
-                }
-                return text;
-            } catch (e) {
-                console.error("PPTX Parsing Error", e);
-                return ""; // 失敗しても続行
-            }
-        }
-
-        // PDF解析関数
-        async function parsePDF(file) {
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let fullText = "";
-                
-                // 全ページをループ
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(" ");
-                    fullText += pageText + " ";
-                }
-                return fullText;
-            } catch (e) {
-                console.error("PDF Parsing Error", e);
-                return ""; // エラーでも続行
-            }
-        }
-
-        async function performOCR(file) {
-            try {
-                const result = await Tesseract.recognize(file, 'jpn+eng', {
-                    logger: m => console.log(m) // 開発者用ログ
-                });
-                return result.data.text;
-            } catch (e) {
-                console.error("OCR Error", e);
-                return "";
-            }
-        }
-
-        function generatePrompt(text, hasImageRef) {
-            // テキストの前処理（マーカー除去）
-            const cleanText = text.replace(/\[IMAGE_REF\]/g, "").replace(/[\r\n\t]+/g, " ").trim();
-            
-            // コンテキストの決定
-            let contextBase = "";
-            let imageInstruction = "\n**【画像参照指示 (If Image Attached)】**\nもしこのプロンプトと共に画像が添付されている場合は、その画像の**【ポーズ】【構図】【配置】**を優先的に参考にしてください。(Refer to the attached image for pose and composition if provided.)\n";
-
-            if (cleanText.length > 5) {
-                contextBase = cleanText;
-                if (hasImageRef) {
-                    imageInstruction = "\n**【重要: 画像参照】** 添付された画像の視覚的特徴（構図、色、被写体）を読み取り、上記のテキスト情報と組み合わせて生成に反映してください。";
-                }
-            } else if (hasImageRef) {
-                contextBase = "（ユーザーが添付する画像を参照）";
-                imageInstruction = "\n**【重要: 画像参照】** テキスト情報の代わりに、**添付されている画像**をメインのソースとして使用します。その画像を詳細に視覚分析（Image-to-Image / Vision）し、その内容・特徴・構図をベースにして、指定されたスタイルで4パターン展開してください。";
-            } else {
-                contextBase = "魅力的なオリジナルキャラクター、詳細な特徴";
-            }
-            
-            const contextShort = contextBase.length > 400 ? contextBase.substring(0, 400) + "..." : contextBase;
-
-            let contentPrompt = "";
-            let modeTitle = "";
-            let gridLayoutDescription = "";
-            
-            // パターン定義配列 (最大8つまで対応)
-            // AIが文字を描画しないよう、記述をシンプルに修正
-            const diversePatterns = userDiverseInputs.map(val => val.trim() || "おまかせ");
-
-            const samePatterns = [
-                "ポートレート/アップ (Portrait/Close-up)",
-                "全身/フルボディ (Full Body)",
-                "アングル変化/横顔 (Side Angle)",
-                "自然な瞬間/キャンディッド (Candid Shot)",
-                "キュート/愛嬌 (Cute)",
-                "ダイナミック/アクション (Dynamic Action)",
-                "後ろ姿/哀愁 (Back View)",
-                "超クローズアップ/マクロ (Macro Detail)"
-            ];
-
-            const noCharPatterns = [
-                "全体像/広角 (Establishing Shot)",
-                "ディテール/質感 (Close-up/Texture)",
-                "ムード/雰囲気 (Atmosphere/Mood)",
-                "アーティスティックな構図 (Artistic Composition)",
-                "時間の変化/夕暮れ・夜 (Time Variation)",
-                "天候の変化 (Weather Variation)",
-                "内部/断面 (Interior/Cross-section)",
-                "マクロ視点 (Macro World)"
-            ];
-
-            // 選択されたグリッド数に合わせてパターンを取得
-            // Panel X や Shot X のラベルはAIへの構造指示としてのみ機能させる
-            const getPatterns = (sourceArray) => {
-                return sourceArray.slice(0, gridCount).map((p, i) => {
-                    const label = charMode === 'same' ? `Shot ${i+1}` : `Panel ${i+1}`;
-                    return `**[${label}]** ${p}`;
-                }).join('\n');
-            };
-
-            if (charMode === 'diverse') {
-                modeTitle = "【全別】";
-                contentPrompt = `
-**入力されたコンテキスト: ${contextShort}**
-${imageInstruction}
-**【重要設定】: 国籍・人種指定がない場合は「日本人 (Japanese)」として描写。**
-
-このコンテキスト（または参照画像）を元に、**${gridCount}つのコマすべてで基本属性を維持**しつつ、**【以下の通りに指定された${gridCount}人の異なるキャラクター（別人）】**を描写してください。
-**※被写体が動物の場合は、各コマのテーマに合わせて犬種や猫種などの【種類】を変更してください。**
-
-${getPatterns(diversePatterns)}
-
-**重要:** 全員が設定（年齢・性別・国籍）には合致していますが、**同一人物には見えないよう、髪型・顔立ち・ファッションで明確に描き分けて**ください。`;
-
-            } else if (charMode === 'nochar') {
-                 modeTitle = "【キャラなし】";
-                 contentPrompt = `
-**入力されたコンテキスト: ${contextShort}**
-${imageInstruction}
-
-**【AIへの指示: キャラクターを描写しない風景・静物画】**
-コンテキスト（または参照画像）を元に、人物やキャラクターを**一切登場させず**、風景、オブジェクト、または空間そのものを${gridCount}つの異なる視点で描写してください。
-
-${getPatterns(noCharPatterns)}
-
-**重要:** **人物、動物、キャラクターは描画しないでください。**`;
-            } else {
-                modeTitle = "【同一】";
-                const sameCharInfo = userSameInput.trim() || defaultSameCharText;
-                contentPrompt = `
-**メインキャラクター情報:**
-"${sameCharInfo}"
-
-**シチュエーション・コンテキスト:**
-"${contextShort}"
-${imageInstruction}
-**【重要設定】: 国籍・人種指定がない場合は「日本人 (Japanese)」として描写。**
-
-**【AIへの指示: 同一場面でのバリエーション展開】**
-コンテキスト（または参照画像）を元に、**「同じ場面・シチュエーション」の中で**、カメラアングルやポーズを変えた${gridCount}つの異なるショットを描写してください。
-
-${getPatterns(samePatterns)}
-
-**重要:** ${gridCount}つのコマ全てで、キャラクターの外見および**背景のロケーションは統一**してください。`;
-            }
-
-            // グリッドレイアウト指示の決定
-            if (gridCount === 4) {
-                gridLayoutDescription = "2x2のグリッドレイアウト";
-            } else if (gridCount === 6) {
-                gridLayoutDescription = "2x3 または 3x2 のグリッドレイアウト (6分割)";
-            } else {
-                gridLayoutDescription = "2x4 または 4x2 のグリッドレイアウト (8分割)";
-            }
-
-            // テキストガイドラインの生成
-            let textGuideline = "";
-            if (textMode === 'on') {
-                textGuideline = `**【テキスト・文字表現のガイドライン (Text Guidelines)】**
-- **基本言語:** 画像内に看板、ポスター、ラベル、擬音などの文字を描画する場合は、**基本的に日本語 (Japanese)** を使用してください。
-- **例外:** "OPEN", "SALE", "CAFE", "WARNING" などの一般的で短い英単語や、デザイン上英語が自然な場合（ブランド名やロゴなど）は状況に応じて英語表記も使用可能です。`;
-            } else if (textMode === 'furigana') {
-                textGuideline = `**【テキスト描画の絶対ルール: 漢字＋ルビ (Kanji + Furigana)】**
-- **最重要事項 (CRITICAL):** 画像内に描かれる**全ての漢字 (Kanji)** の**真上**に、必ず**読み仮名（ふりがな/Hiragana/Ruby）**を小さく描画してください。(MANDATORY: Draw small Hiragana readings directly ABOVE every Kanji character.)
-- **禁止事項:** 漢字を描く際に、読み仮名（ルビ）を省略することは禁止です。必ず「漢字」と「その上のルビ」をセットで描画してください。`;
-            } else if (textMode === 'hiragana') {
-                textGuideline = `**【テキスト・文字表現のガイドライン (Text Guidelines: Hiragana Only)】**
-- **使用文字:** 画像内に文字を描画する場合は、**「ひらがな (Hiragana)」のみ**を使用してください。(Use ONLY Hiragana for text.)
-- **徹底事項:** 本来なら漢字、カタカナ、英語（"OPEN"や"SALE"など）で書かれる単語も、**全て「ひらがな」に変換・翻訳**して描画してください。(Convert ALL text, including Kanji and English, into Hiragana.)`;
-            } else {
-                textGuideline = `**【文字描画の完全禁止 (ABSOLUTE NO TEXT)】**
-- **最重要指示:** 画像内には、**英語 (English)、日本語、数字、記号など、いかなる文字も絶対に描画しないでください。** (Do NOT draw any text, letters, characters, numbers, or symbols.)
-- **英語の禁止:** 特に英語のラベル、サイン、擬音などが表示されがちですが、これらも**完全に排除**してください。(Absolutely NO English text.)
-- **徹底事項:** 看板、ポスター、ラベル、吹き出し、服のロゴ、背景の看板など、あらゆる場所から文字要素を完全に排除し、**文字のない純粋な絵**として描写してください。`;
-            }
-
-            // 背景設定ガイドラインの生成
-            let bgGuideline = "";
-            if (bgMode === 'off') {
-                bgGuideline = `**【重要: 背景指定 (Background Constraint)】**
-- **背景は「完全な白 (Pure White Background)」**にしてください。
-- キャラクター自身と、キャラクターが手に持っている物や投げた物は**明確に描写**してください。
-- それ以外の風景、建物、空、エフェクトなどの背景要素は**一切描画しないでください**。(Do NOT render any scenery, buildings, or environmental effects.)`;
-            }
-
-            // タイトル行の生成（厳密に20文字以内制限）
-            let titleText = contextShort.replace(/[\r\n]/g, '');
-            if(hasImageRef && cleanText.length < 5) titleText = "画像参照";
-
-            const maxTitleChars = 20;
-            const titleSuffix = "...";
-            const allowedLen = Math.max(0, maxTitleChars - modeTitle.length - titleSuffix.length);
-            
-            if (titleText.length > allowedLen) {
-                titleText = titleText.substring(0, allowedLen);
-            }
-            
-            const titleLine = `${modeTitle}${titleText}${titleSuffix}`;
-            
-            const finalPrompt = `${titleLine}
-
-以下の詳細要件に従って、${gridCount}分割のグリッド画像を生成してください。
-
-**【スタイル指定】**
-${selectedStyle.prompt}
-
-**【描画内容詳細】**
-${contentPrompt}
-
-${textGuideline}
-
-${bgGuideline}
-
-**【重要: 構図の自動調整 (Auto Composition Adjustment)】**
-もし入力されたコンテキスト（指示内容）に、指定したコマ数（${gridCount}）よりも多くの要素（ポーズやシチュエーションの指定）が含まれている場合は、情報の伝達を優先するために以下の調整を強制してください：
-- **特殊なアングル禁止:** 「アップ/クローズアップ」「後ろ姿」「マクロ視点」などの装飾的な構図は使用しないでください。
-- **基本構図への限定:** 全てのコマを、対象がはっきり見える**「基本的な正面」または「横・斜め」からの構図**に限定してください。
-
-**【レイアウト・制約事項】**
-- ${gridLayoutDescription}で、各コマを枠線で区切ってください。
-- ${gridCount}つのコマは、選択されたスタイル（${selectedStyle.label}）で統一感を持たせて描写してください。`;
-
-            document.getElementById('promptResult').textContent = finalPrompt;
-        }
-
-        document.getElementById('copyBtn').onclick = () => {
-            const textToCopy = document.getElementById('promptResult').textContent;
-            
-            // モダンなコピー方法とレガシーな方法の併用
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    showToast("クリップボードにコピーしました！");
-                }).catch(() => {
-                    fallbackCopyTextToClipboard(textToCopy);
-                });
-            } else {
-                fallbackCopyTextToClipboard(textToCopy);
-            }
-        };
-
-        function fallbackCopyTextToClipboard(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-
-            try {
-                const successful = document.execCommand('copy');
-                const msg = successful ? 'クリップボードにコピーしました！' : 'コピーに失敗しました';
-                showToast(msg);
-            } catch (err) {
-                showToast('コピーできませんでした');
-            }
-
-            document.body.removeChild(textArea);
-        }
-
-        // --- NEW Soft Reset Function ---
-        function resetApp() {
-            // Reset Variables
-            selectedFiles = [];
-            document.getElementById('manualText').value = '';
-            document.getElementById('promptResult').textContent = 'ここに生成されたプロンプトが表示されます。\nテキストを入力して「①プロンプト生成」を押してください。';
-
-            // Reset States
-            userDiverseInputs = [...defaultDiversePatterns];
-            userSameInput = defaultSameCharText;
-
-            selectStyle(styles[0]); // Irasutoya
-            setGridMode(4);
-            setCharMode('same');
-            setTextMode('off');
-            setBgMode('on');
-
-            showToast("リセットしました");
-        }
-
-        // Initialize
-        renderStyles();
-        selectStyle(styles[0]); // 明示的に初期スタイル(いらすとや)をセットしてUI更新
-        setGridMode(4); // Set default grid mode and trigger renderCharInputs
-        setCharMode('same'); // Set default visual state
-        setTextMode('off'); // Default text mode
-        setBgMode('on'); // Default bg mode
-    </script>
+<body class="bg-black text-white h-full flex flex-col font-sans select-none overflow-hidden">
+
+<!-- メインコンテンツ -->
+<main class="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 lg:p-8 gap-6 lg:gap-12 overflow-y-auto">
+
+<!-- 左側：コントロールパネル（設定） -->
+<div id="control-panel" class="w-full lg:w-[380px] bg-zinc-900/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-800 flex flex-col gap-6 shadow-2xl shrink-0">
+<div>
+<h2 class="text-lg font-bold text-zinc-300 mb-1">タイマー設定</h2>
+<p id="panel-desc" class="text-xs text-zinc-500">直感的なマルチレイヤーリングで時間を管理します。</p>
+</div>
+
+<!-- 時間設定 -->
+<div id="section-time-setup" class="space-y-4">
+<div class="flex justify-between text-sm text-zinc-400 font-medium">
+<span>設定時間</span>
+<span id="target-time-display" class="text-orange-500 font-bold">10分 00秒</span>
+</div>
+
+<!-- 時間(H)/分(M)/秒(S) のプルダウン選択 -->
+<div class="grid grid-cols-3 gap-2">
+<div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
+<label class="block text-[10px] text-zinc-500 mb-1">時間</label>
+<select id="select-hours" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
+<!-- JSで動的に追加 (0-23) -->
+</select>
+</div>
+<div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
+<label class="block text-[10px] text-zinc-500 mb-1">分</label>
+<select id="select-minutes" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
+<!-- JSで動的に追加 (0-59) -->
+</select>
+</div>
+<div class="bg-zinc-950 p-2 rounded-xl text-center border border-zinc-800/80">
+<label class="block text-[10px] text-zinc-500 mb-1">秒</label>
+<select id="select-seconds" class="w-full bg-transparent text-center text-2xl font-bold text-white focus:outline-none focus:text-orange-500 cursor-pointer appearance-none py-1">
+<!-- JSで動的に追加 (0-59) -->
+</select>
+</div>
+</div>
+
+<!-- クイックプリセット -->
+<div class="flex flex-wrap gap-1.5 mt-2">
+<button id="preset-1" onclick="setPreset(1)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">1分</button>
+<button id="preset-3" onclick="setPreset(3)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">3分</button>
+<button id="preset-5" onclick="setPreset(5)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">5分</button>
+<button id="preset-10" onclick="setPreset(10)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">10分</button>
+<button id="preset-15" onclick="setPreset(15)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">15分</button>
+<button id="preset-30" onclick="setPreset(30)" class="flex-1 min-w-[60px] py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition">30分</button>
+</div>
+</div>
+
+<!-- 動く部分の構成（一重・二重・三重） -->
+<div class="space-y-3">
+<div class="flex justify-between text-sm text-zinc-400 font-medium">
+<span>視覚リング数</span>
+<span id="ring-count-label" class="text-orange-500 font-bold">一重</span>
+</div>
+<div class="grid grid-cols-3 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80">
+<button onclick="setRingCount(1)" id="btn-ring-1" class="py-2 text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow">
+一重
+</button>
+<button onclick="setRingCount(2)" id="btn-ring-2" class="py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+二重
+</button>
+<button onclick="setRingCount(3)" id="btn-ring-3" class="py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+三重
+</button>
+</div>
+</div>
+
+<!-- アラーム音設定 -->
+<div id="section-sound-setup" class="space-y-2">
+<label class="block text-sm text-zinc-400 font-medium">アラート音</label>
+<select id="sound-select" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-sm text-zinc-300 focus:outline-none focus:border-orange-500 cursor-pointer">
+<option value="chime">電子チャイム音（ビープ）</option>
+<option value="space">スペーシー・アラート（アップテンポ）</option>
+<option value="spring">春の朝（爽やか・リズミカル）</option>
+<option value="pulse">ソフトパルス（瞑想風）</option>
+</select>
+</div>
+</div>
+
+<!-- 右側：メインビジュアルタイマー画面（高さと幅の比率を考慮したレスポンシブ設計） -->
+<div class="flex-1 w-full flex flex-col items-center justify-center p-2">
+<!-- タイマー開始時に上部に小さく表示されるコンパクトなリング数切替バー（重なりによる無効化を防ぐため、relativeとz-50を指定） -->
+<div id="active-ring-selector" class="hidden relative mb-4 bg-zinc-900/90 border border-zinc-800/80 rounded-full p-1 items-center space-x-1 shadow-2xl z-50 pointer-events-auto transition-all duration-300">
+<button onclick="setRingCount(1)" id="btn-active-ring-1" class="px-4 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow">一重</button>
+<button onclick="setRingCount(2)" id="btn-active-ring-2" class="px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">二重</button>
+<button onclick="setRingCount(3)" id="btn-active-ring-3" class="px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white">三重</button>
+</div>
+
+<!-- アプリ表示用コンテナ（画面の高さに合わせて絶対に周囲と被らないサイズに自動縮小、開始時は大きく展開） -->
+<div id="timer-container" class="relative w-full aspect-square max-w-[min(420px,50vh)] flex items-center justify-center transition-all duration-500">
+
+<!-- リング用SVG（蚊取り線香螺旋パスを使用） -->
+<svg class="absolute w-full h-full p-2" viewBox="0 0 400 400">
+<!-- 背景の薄いガイドラインとしての蚊取り線香螺旋 -->
+<path id="spiral-guide" fill="none" stroke="#1c1917" stroke-width="10" stroke-linecap="round" opacity="0.4" />
+
+<!-- アクティブな蚊取り線香螺旋（オレンジ） -->
+<path id="spiral-active" class="circle-ring" fill="none" stroke="#f97316" stroke-width="11" stroke-linecap="round" />
+
+<!-- タイマーの文字盤目盛り（時計風のドット・12箇所） -->
+<g id="dial-ticks">
+<!-- JSで動的に追加 -->
+</g>
+</svg>
+
+<!-- 中央 of タイムテキスト -->
+<div class="absolute flex flex-col items-center justify-center text-center z-10 pointer-events-none">
+<!-- ベルマークと通知予定時刻 -->
+<div id="scheduled-bell" class="flex items-center text-xs text-zinc-500 font-semibold mb-2 gap-1.5 opacity-0 transition-opacity duration-300">
+<i data-lucide="bell" class="w-3.5 h-3.5 text-zinc-500"></i>
+<span id="scheduled-time">--:--</span>
+</div>
+
+<!-- デジタル残り時間 -->
+<span id="timer-text" class="font-mono-custom text-5xl md:text-6xl font-light tracking-tight">10:00</span>
+<span id="sub-millisecond-text" class="font-mono-custom text-sm font-semibold tracking-wider text-orange-500 mt-1 opacity-80">.0</span>
+</div>
+
+<!-- 左アクションボタン：キャンセル / リセット（コンパクトサイズに変更） -->
+<button id="cancel-btn" class="absolute left-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition active:scale-95 focus:outline-none">
+<span class="text-[10px] md:text-xs font-bold">リセット</span>
+</button>
+
+<!-- 右アクションボタン：開始 / 一時停止（コンパクトサイズに変更） -->
+<button id="start-btn" class="absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none">
+<span id="start-btn-text" class="text-[10px] md:text-xs font-bold">開始</span>
+</button>
+
+</div>
+
+<!-- 下部ステータス表示 -->
+<div id="toast-message" class="mt-4 px-6 py-3 rounded-full bg-orange-500 text-black font-bold text-sm shadow-xl flex items-center gap-2 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
+<i data-lucide="party-popper" class="w-4 h-4"></i>
+<span id="toast-text">時間が終了しました！</span>
+</div>
+</div>
+
+</main>
+
+<!-- Web Audio API を用いた効果音生成シンセサイザー -->
+<script>
+let audioCtx = null;
+let alarmTimer = null; // ループ鳴動用のインターバルタイマー
+let isAlarmActive = false; // アラーム作動状態フラグ
+
+// 音声の初期化。サスペンド状態も確実にレジュームさせる
+function initAudio() {
+if (!audioCtx) {
+audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+if (audioCtx && audioCtx.state === 'suspended') {
+audioCtx.resume().catch(err => console.log("AudioContext resume failed:", err));
+}
+}
+
+// 初回ユーザーアクションによる音声アクティベーション
+const unlockAudio = () => {
+initAudio();
+document.removeEventListener('click', unlockAudio);
+document.removeEventListener('touchstart', unlockAudio);
+};
+document.addEventListener('click', unlockAudio);
+document.addEventListener('touchstart', unlockAudio);
+
+// 指定 of 音源タイプを単発再生する関数 (内部呼び出し用)
+function playAlertSoundSingle(type) {
+initAudio();
+if (!audioCtx) return;
+
+const now = audioCtx.currentTime;
+
+if (type === 'chime') {
+for (let i = 0; i < 4; i++) {
+const osc = audioCtx.createOscillator();
+const gain = audioCtx.createGain();
+
+osc.type = 'sine';
+osc.frequency.setValueAtTime(880, now + i * 0.15); // ややテンポ良く鳴らす
+
+gain.gain.setValueAtTime(0, now + i * 0.15);
+gain.gain.linearRampToValueAtTime(0.4, now + i * 0.15 + 0.03);
+gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.12);
+
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start(now + i * 0.15);
+osc.stop(now + i * 0.15 + 0.14);
+}
+} else if (type === 'space') {
+// --- テンションの上がるエレクトロニック・ミュージック（150 BPM テクノ） ---
+const tempo = 150; // BPM
+const beatDuration = 60 / tempo; // 1拍 = 0.4秒
+
+// 1. 強力な4つ打ちキックドラム（4拍）
+for (let b = 0; b < 4; b++) {
+const kickTime = now + b * beatDuration;
+
+const kickOsc = audioCtx.createOscillator();
+const kickGain = audioCtx.createGain();
+
+kickOsc.type = 'sine';
+kickOsc.frequency.setValueAtTime(150, kickTime);
+kickOsc.frequency.exponentialRampToValueAtTime(0.01, kickTime + 0.15);
+
+kickGain.gain.setValueAtTime(0.6, kickTime);
+kickGain.gain.exponentialRampToValueAtTime(0.01, kickTime + 0.15);
+
+kickOsc.connect(kickGain);
+kickGain.connect(audioCtx.destination);
+
+kickOsc.start(kickTime);
+kickOsc.stop(kickTime + 0.16);
+}
+
+// 2. テンションの上がる高速エレクトロ・シンセ・アルペジオ (8分音符で弾む)
+// Cマイナー・ペンタトニックスケール
+const melody = [523.25, 622.25, 783.99, 523.25, 783.99, 932.33, 1046.50, 783.99];
+for (let i = 0; i < 8; i++) {
+const noteTime = now + i * (beatDuration / 2);
+
+const osc = audioCtx.createOscillator();
+const filter = audioCtx.createBiquadFilter();
+const gain = audioCtx.createGain();
+
+osc.type = 'sawtooth'; // 歪みとパンチのある鋸歯状波
+osc.frequency.setValueAtTime(melody[i], noteTime);
+
+// フィルターエンベロープで「ミョンミョン」したシンセリードを演出
+filter.type = 'lowpass';
+filter.Q.setValueAtTime(4, noteTime);
+filter.frequency.setValueAtTime(1500, noteTime);
+filter.frequency.exponentialRampToValueAtTime(400, noteTime + 0.18);
+
+gain.gain.setValueAtTime(0, noteTime);
+gain.gain.linearRampToValueAtTime(0.12, noteTime + 0.02);
+gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.18);
+
+osc.connect(filter);
+filter.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start(noteTime);
+osc.stop(noteTime + 0.19);
+}
+} else if (type === 'spring') {
+// --- 春の朝をイメージした爽やかでリズミカルな音楽（120 BPM マリンバ/ベル風） ---
+const tempo = 120; // BPM
+const beatDuration = 60 / tempo; // 1拍 = 0.5秒
+
+// 爽やかで明るく弾むコードアルペジオ (C Major -> F Major -> G Major -> C Major風の動き)
+const melody = [523.25, 659.25, 783.99, 1046.50, 880.00, 698.46, 523.25, 987.77, 783.99, 587.33, 523.25, 659.25, 783.99, 1046.50, 783.99, 659.25];
+const noteInterval = beatDuration / 2; // 0.25秒
+
+for (let i = 0; i < melody.length; i++) {
+const noteTime = now + i * noteInterval;
+
+const osc = audioCtx.createOscillator();
+const oscSub = audioCtx.createOscillator(); // 明るさと厚みを出すサブオシレーター
+const gain = audioCtx.createGain();
+
+osc.type = 'triangle';
+osc.frequency.setValueAtTime(melody[i], noteTime);
+
+oscSub.type = 'sine';
+oscSub.frequency.setValueAtTime(melody[i] * 2, noteTime); // 1オクターブ上で心地良いきらめきをプラス
+
+gain.gain.setValueAtTime(0, noteTime);
+gain.gain.linearRampToValueAtTime(0.15, noteTime + 0.01);
+gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.16);
+
+osc.connect(gain);
+oscSub.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start(noteTime);
+oscSub.start(noteTime);
+osc.stop(noteTime + 0.18);
+oscSub.stop(noteTime + 0.18);
+}
+} else if (type === 'pulse') {
+for (let i = 0; i < 2; i++) {
+const osc1 = audioCtx.createOscillator();
+const osc2 = audioCtx.createOscillator();
+const gain = audioCtx.createGain();
+
+osc1.type = 'sine';
+osc2.type = 'triangle';
+
+osc1.frequency.setValueAtTime(329.63, now + i * 0.4);
+osc2.frequency.setValueAtTime(331.63, now + i * 0.4);
+
+gain.gain.setValueAtTime(0, now + i * 0.4);
+gain.gain.linearRampToValueAtTime(0.4, now + i * 0.4 + 0.05);
+gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.4 + 0.7);
+
+osc1.connect(gain);
+osc2.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc1.start(now + i * 0.4);
+osc2.start(now + i * 0.4);
+osc1.stop(now + i * 0.4 + 0.38);
+osc2.stop(now + i * 0.4 + 0.38);
+}
+}
+}
+
+// アラーム音を無限ループで開始する関数
+function startAlarmLoop(type) {
+if (isAlarmActive) return;
+isAlarmActive = true;
+
+const triggerSound = () => {
+if (!isAlarmActive) return;
+playAlertSoundSingle(type);
+};
+
+triggerSound(); // 初回再生
+
+// 音源タイプごとに再生間隔を設定
+let intervalTime = 1800; // デフォルト 1.8秒
+if (type === 'chime') intervalTime = 1200; // チャイムは短めピピッ×4
+if (type === 'space') intervalTime = 1600; // 1.6秒周期で150BPM 4小節ループと完全シンクロ
+if (type === 'spring') intervalTime = 4000; // 16音（0.25秒×16 = 4.0秒）のメロディなので、ループ周期を4秒に設定
+if (type === 'pulse') intervalTime = 1500;
+
+alarmTimer = setInterval(triggerSound, intervalTime);
+}
+
+// アラームを完全に停止する関数
+function stopAlarmLoop() {
+isAlarmActive = false;
+if (alarmTimer) {
+clearInterval(alarmTimer);
+alarmTimer = null;
+}
+}
+</script>
+
+<!-- アプリケーションのメイン状態・ロジック -->
+<script>
+// DOM要素の参照
+const spiralActive = document.getElementById('spiral-active');
+const spiralGuide = document.getElementById('spiral-guide');
+const dialTicks = document.getElementById('dial-ticks');
+const timerContainer = document.getElementById('timer-container');
+
+const selectHours = document.getElementById('select-hours');
+const selectMinutes = document.getElementById('select-minutes');
+const selectSeconds = document.getElementById('select-seconds');
+const targetTimeDisplay = document.getElementById('target-time-display');
+
+const ringCountLabel = document.getElementById('ring-count-label');
+
+const timerText = document.getElementById('timer-text');
+const subMilliText = document.getElementById('sub-millisecond-text');
+
+const scheduledBell = document.getElementById('scheduled-bell');
+const scheduledTime = document.getElementById('scheduled-time');
+
+const cancelBtn = document.getElementById('cancel-btn');
+const startBtn = document.getElementById('start-btn');
+const startBtnText = document.getElementById('start-btn-text');
+
+const toastMessage = document.getElementById('toast-message');
+const toastText = document.getElementById('toast-text');
+const soundSelect = document.getElementById('sound-select');
+
+// アプリの状態管理
+let totalDurationSeconds = 600; // デフォルト10分
+let remainingSeconds = 600;
+let isRunning = false;
+let isFinished = false; // アラーム作動状態
+let animationFrameId = null; // requestAnimationFrame用ID
+let lastTimestamp = 0; // ループ制御用タイムスタンプ
+let ringCount = 1; // 1: 一重, 2: 二重, 3: 三重
+
+// SVGリングの基本パラメータ
+const rOuter = 175;
+const rMiddle = 145;
+const rInner = 115;
+
+// 初期設定
+function initApp() {
+// プルダウンメニューのオプションを生成
+populateSelectOptions();
+
+// 文字盤目盛りの描画
+drawDialTicks();
+
+// 初期同期
+syncSelectsToDuration();
+updateRingDisplay();
+updateTimerVisuals();
+updateControlPanelVisibility();
+
+// イベントリスナーの登録
+selectHours.addEventListener('change', handleInputChange);
+selectMinutes.addEventListener('change', handleInputChange);
+selectSeconds.addEventListener('change', handleInputChange);
+
+cancelBtn.addEventListener('click', handleCancelClick);
+startBtn.addEventListener('click', handleStartClick);
+
+// Lucideアイコンのレンダリング
+lucide.createIcons();
+}
+
+// プルダウン用のオプションを動的生成（日本語表記）
+function populateSelectOptions() {
+// 時間のオプション (0〜23)
+selectHours.innerHTML = '';
+for (let i = 0; i <= 23; i++) {
+const opt = document.createElement('option');
+opt.value = i;
+opt.textContent = `${i}時間`;
+selectHours.appendChild(opt);
+}
+
+// 分のオプション (0〜59)
+selectMinutes.innerHTML = '';
+for (let i = 0; i <= 59; i++) {
+const opt = document.createElement('option');
+opt.value = i;
+opt.textContent = `${i}分`;
+selectMinutes.appendChild(opt);
+}
+
+// 秒のオプション (0〜59)
+selectSeconds.innerHTML = '';
+for (let i = 0; i <= 59; i++) {
+const opt = document.createElement('option');
+opt.value = i;
+opt.textContent = `${i}秒`;
+selectSeconds.appendChild(opt);
+}
+}
+
+// 文字盤に12時間分の目盛りを配置
+function drawDialTicks() {
+dialTicks.innerHTML = '';
+for (let i = 0; i < 12; i++) {
+const angle = (i * 30 * Math.PI) / 180;
+const x1 = 200 + 185 * Math.sin(angle);
+const y1 = 200 - 185 * Math.cos(angle);
+const x2 = 200 + 180 * Math.sin(angle);
+const y2 = 200 - 180 * Math.cos(angle);
+
+const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+line.setAttribute("x1", x1);
+line.setAttribute("y1", y1);
+line.setAttribute("x2", x2);
+line.setAttribute("y2", y2);
+line.setAttribute("stroke", i % 3 === 0 ? "#52525b" : "#27272a");
+line.setAttribute("stroke-width", i % 3 === 0 ? "2.5" : "1.5");
+line.setAttribute("stroke-linecap", "round");
+dialTicks.appendChild(line);
+}
+}
+
+// アルキメデスの螺旋パス（12時から反時計回り、蚊取り線香型）を動的生成する
+function generateSpiralPath(turns, startRadius, endRadius) {
+const cx = 200, cy = 200;
+const points = [];
+const steps = 180 * turns; // 1周あたり180段階の高精度描画
+const startAngle = -Math.PI / 2; // 12時の位置からスタート
+
+for (let i = 0; i <= steps; i++) {
+const t = i / steps; // 0.00 〜 1.00
+const angle = startAngle - t * turns * 2 * Math.PI; // 反時計回りにturns周分回転
+const r = startRadius - t * (startRadius - endRadius); // 半径が外側から内側へ滑らかに減少
+const x = cx + r * Math.cos(angle);
+const y = cy + r * Math.sin(angle);
+points.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
+}
+return points.join(' ');
+}
+
+// リングの数（一重・二重・三重）を変更（再生中であっても変更可能）
+function setRingCount(count) {
+if (isFinished) return; // アラーム鳴動中のみ変更不可
+ringCount = count;
+
+// コントロールパネル側のボタンのアクティブ表現切り替え
+const buttons = [
+{ btn: document.getElementById('btn-ring-1'), count: 1 },
+{ btn: document.getElementById('btn-ring-2'), count: 2 },
+{ btn: document.getElementById('btn-ring-3'), count: 3 }
+];
+
+buttons.forEach(item => {
+if (item.btn) {
+if (item.count === count) {
+item.btn.className = "py-2 text-xs font-bold rounded-lg transition-all bg-orange-500 text-black shadow";
+} else {
+item.btn.className = "py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white";
+}
+}
+});
+
+// 開始時上部側のボタンのアクティブ表現切り替え
+const activeButtons = [
+{ btn: document.getElementById('btn-active-ring-1'), count: 1 },
+{ btn: document.getElementById('btn-active-ring-2'), count: 2 },
+{ btn: document.getElementById('btn-active-ring-3'), count: 3 }
+];
+
+activeButtons.forEach(item => {
+if (item.btn) {
+if (item.count === count) {
+item.btn.className = "px-4 py-1 text-xs font-bold rounded-full transition-all bg-orange-500 text-black shadow";
+} else {
+item.btn.className = "px-4 py-1 text-xs font-bold rounded-full transition-all text-zinc-400 hover:text-white";
+}
+}
+});
+
+// リング数表示ラベルの更新
+if (count === 1) {
+ringCountLabel.textContent = "一重";
+} else if (count === 2) {
+ringCountLabel.textContent = "二重";
+} else if (count === 3) {
+ringCountLabel.textContent = "三重";
+}
+
+updateRingDisplay();
+updateTimerVisuals();
+}
+
+// 各リング数に合わせた美しい蚊取り線香状（スパイラル）の背景ガイドラインを適用
+function updateRingDisplay() {
+let turns = ringCount;
+let startR = rOuter;
+let endR = rOuter;
+
+if (ringCount === 2) endR = rMiddle;
+if (ringCount === 3) endR = rInner;
+
+// ガイドライン用のフル螺旋を生成・適用
+const pathD = generateSpiralPath(turns, startR, endR);
+spiralGuide.setAttribute('d', pathD);
+}
+
+// プリセットボタン
+function setPreset(minutes) {
+if (isRunning || isFinished) return;
+selectHours.value = 0;
+selectMinutes.value = minutes;
+selectSeconds.value = 0;
+handleInputChange();
+}
+
+// プルダウン変更 of 同期
+function handleInputChange() {
+let h = parseInt(selectHours.value) || 0;
+let m = parseInt(selectMinutes.value) || 0;
+let s = parseInt(selectSeconds.value) || 0;
+
+totalDurationSeconds = (h * 3600) + (m * 60) + s;
+if (totalDurationSeconds <= 0) {
+totalDurationSeconds = 1;
+}
+
+remainingSeconds = totalDurationSeconds;
+
+let text = "";
+if (h > 0) text += `${h}時間 `;
+if (m > 0 || h > 0) text += `${m}分 `;
+text += `${s}秒`;
+targetTimeDisplay.textContent = text;
+
+updateTimerVisuals();
+}
+
+// インプット（プルダウン）値を秒から逆算して同期
+function syncSelectsToDuration() {
+const h = Math.floor(remainingSeconds / 3600);
+const m = Math.floor((remainingSeconds % 3600) / 60);
+const s = Math.floor(remainingSeconds % 60);
+
+selectHours.value = h;
+selectMinutes.value = m;
+selectSeconds.value = s;
+
+let text = "";
+if (h > 0) text += `${h}時間 `;
+if (m > 0 || h > 0) text += `${m}分 `;
+text += `${s}秒`;
+targetTimeDisplay.textContent = text;
+}
+
+// デジタル表示のフォーマット
+function formatDigitalTime(sec) {
+const h = Math.floor(sec / 3600);
+const m = Math.floor((sec % 3600) / 60);
+const s = Math.floor(sec % 60);
+
+if (h > 0) {
+return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+} else {
+return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+}
+
+// タイマー完了予定時刻の更新
+function updateScheduledTime() {
+if (!isRunning) {
+scheduledBell.classList.add('opacity-0');
+scheduledBell.classList.remove('opacity-100');
+return;
+}
+
+const now = new Date();
+const future = new Date(now.getTime() + remainingSeconds * 1000);
+const h = String(future.getHours()).padStart(2, '0');
+const m = String(future.getMinutes()).padStart(2, '0');
+
+scheduledTime.textContent = `${h}:${m}`;
+scheduledBell.classList.remove('opacity-0');
+scheduledBell.classList.add('opacity-100');
+}
+
+// コントロールパネルの表示/非表示（タイマー開始時は設定パネル全体を隠し、上部にコンパクトなリング切替を表示）
+function updateControlPanelVisibility() {
+const isPlayingOrFinished = isRunning || isFinished;
+const controlPanel = document.getElementById('control-panel');
+const activeRingSelector = document.getElementById('active-ring-selector');
+
+if (isPlayingOrFinished) {
+// 開始時は左側のコントロールパネル全体を非表示にする
+if (controlPanel) controlPanel.classList.add('hidden');
+// 上部のコンパクトな切り替えボタンを表示
+if (activeRingSelector) {
+activeRingSelector.classList.remove('hidden');
+activeRingSelector.classList.add('flex');
+}
+
+// タイマー画面を画面いっぱいに広く使うために、max-width制限を動的に拡大する
+if (timerContainer) {
+timerContainer.classList.remove('max-w-[min(420px,50vh)]');
+timerContainer.classList.add('max-w-[min(650px,80vh)]');
+}
+} else {
+// 停止・設定中は左側のコントロールパネル全体を表示する
+if (controlPanel) controlPanel.classList.remove('hidden');
+// 上部のコンパクトな切り替えボタンを非表示
+if (activeRingSelector) {
+activeRingSelector.classList.add('hidden');
+activeRingSelector.classList.remove('flex');
+}
+
+// 元のサイズへ戻す
+if (timerContainer) {
+timerContainer.classList.remove('max-w-[min(650px,80vh)]');
+timerContainer.classList.add('max-w-[min(420px,50vh)]');
+}
+}
+}
+
+// 残り時間（割合）に基づいて、外側が削れた残りの螺旋パスのみを動的に生成する関数 (シームレス端点ブレンド補間仕様)
+function generateSpiralRemainingPath(turns, startRadius, endRadius, progress) {
+if (progress <= 0) return '';
+
+const cx = 200, cy = 200;
+const points = [];
+const steps = 180 * turns;
+const startAngle = -Math.PI / 2;
+
+// 残り割合に応じた正確な位置を算出
+const tStart = 1.0 - progress;
+
+// 1. 完全連続的な補間処理により、開始端点の座標を精密に算出（ガタつきを100%排除）
+const angleStart = startAngle - tStart * turns * 2 * Math.PI;
+const rStart = startRadius - tStart * (startRadius - endRadius);
+const xStart = cx + rStart * Math.cos(angleStart);
+const yStart = cy + rStart * Math.sin(angleStart);
+
+// スタート位置を追加
+points.push(`M ${xStart.toFixed(2)} ${yStart.toFixed(2)}`);
+
+// 2. 次の整数ステップから残りの螺旋パス要素へ滑らかに結ぶ
+const startStep = Math.ceil(tStart * steps);
+for (let i = startStep; i <= steps; i++) {
+const t = i / steps; // 0.00 〜 1.00
+const angle = startAngle - t * turns * 2 * Math.PI; // 反時計回り
+const r = startRadius - t * (startRadius - endRadius);
+const x = cx + r * Math.cos(angle);
+const y = cy + r * Math.sin(angle);
+
+points.push(`L ${x.toFixed(2)} ${y.toFixed(2)}`);
+}
+return points.join(' ');
+}
+
+// 円形（らせん）タイマーの進捗ビジュアル描画 (動的パス描画アプローチ)
+function updateTimerVisuals() {
+// デジタルテキスト
+timerText.textContent = formatDigitalTime(Math.ceil(remainingSeconds));
+
+// 小数点（ミリ秒進捗）
+const fraction = remainingSeconds % 1;
+subMilliText.textContent = "." + Math.floor(fraction * 10);
+
+// 全体の残り割合（1.00 〜 0.00）
+const overallProgress = (isRunning && !isFinished)
+? (totalDurationSeconds > 0 ? (remainingSeconds / totalDurationSeconds) : 0)
+: 1.0;
+
+// 残り割合に合わせ、表示するスパイラルパラメータを計算
+let turns = ringCount;
+let startR = rOuter;
+let endR = rOuter;
+
+if (ringCount === 2) endR = rMiddle;
+if (ringCount === 3) endR = rInner;
+
+// パスデータ自体の動的な反時計回り再計算
+const activeD = generateSpiralRemainingPath(turns, startR, endR, overallProgress);
+spiralActive.setAttribute('d', activeD);
+}
+
+// 右側：開始 / 一時停止 / 停止アクションのハンドラー
+function handleStartClick() {
+if (isFinished) {
+stopTimerAndAlarm();
+} else {
+toggleTimer();
+}
+}
+
+// 左側：キャンセル / リセットボタンのハンドラー
+function handleCancelClick() {
+if (isFinished) {
+stopTimerAndAlarm();
+} else {
+resetTimer();
+}
+}
+
+// 高精度アニメーションループ用 (requestAnimationFrame)
+function runTimerAnimation(timestamp) {
+if (!isRunning) return;
+
+if (!lastTimestamp) {
+lastTimestamp = timestamp;
+}
+
+// 経過時間を秒単位で計算（完全に滑らかな時間計算）
+const elapsed = (timestamp - lastTimestamp) / 1000;
+lastTimestamp = timestamp;
+
+remainingSeconds -= elapsed;
+
+if (remainingSeconds <= 0) {
+remainingSeconds = 0;
+updateTimerVisuals();
+timerComplete();
+} else {
+updateTimerVisuals();
+animationFrameId = requestAnimationFrame(runTimerAnimation);
+}
+}
+
+// タイマー開始・一時停止のトグル
+function toggleTimer() {
+initAudio();
+
+if (isRunning) {
+// 一時停止処理
+if (animationFrameId) {
+cancelAnimationFrame(animationFrameId);
+animationFrameId = null;
+}
+isRunning = false;
+startBtnText.textContent = "再開";
+startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none";
+
+// プルダウンのロック解除
+enableSelectControls();
+updateScheduledTime();
+updateTimerVisuals();
+updateControlPanelVisibility();
+} else {
+// 開始・再開処理
+if (remainingSeconds <= 0) {
+remainingSeconds = totalDurationSeconds;
+}
+
+isRunning = true;
+isFinished = false;
+startBtnText.textContent = "一時停止";
+startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-amber-950/80 border border-amber-800/80 flex flex-col items-center justify-center text-amber-500 hover:bg-amber-900 transition active:scale-95 focus:outline-none";
+
+// 実行中に間違えて触れないようプルダウンをロック
+disableSelectControls();
+updateScheduledTime();
+updateTimerVisuals();
+updateControlPanelVisibility();
+
+// アニメーションループを開始
+lastTimestamp = performance.now();
+animationFrameId = requestAnimationFrame(runTimerAnimation);
+}
+}
+
+// プルダウン操作の制限
+function disableSelectControls() {
+selectHours.disabled = true;
+selectMinutes.disabled = true;
+selectSeconds.disabled = true;
+selectHours.classList.add('opacity-50', 'cursor-not-allowed');
+selectMinutes.classList.add('opacity-50', 'cursor-not-allowed');
+selectSeconds.classList.add('opacity-50', 'cursor-not-allowed');
+}
+
+function enableSelectControls() {
+selectHours.disabled = false;
+selectMinutes.disabled = false;
+selectSeconds.disabled = false;
+selectHours.classList.remove('opacity-50', 'cursor-not-allowed');
+selectMinutes.classList.remove('opacity-50', 'cursor-not-allowed');
+selectSeconds.classList.remove('opacity-50', 'cursor-not-allowed');
+}
+
+// タイマー完了（無限アラームの開始フェーズ）
+function timerComplete() {
+if (animationFrameId) {
+cancelAnimationFrame(animationFrameId);
+animationFrameId = null;
+}
+isRunning = false;
+isFinished = true;
+
+// UIをアラーム用の「停止」ボタンに変更
+startBtnText.textContent = "停止";
+startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-600 border-2 border-red-400 flex flex-col items-center justify-center text-white font-black hover:bg-red-700 transition active:scale-95 focus:outline-none animate-pulse-red z-20";
+
+startAlarmLoop(soundSelect.value);
+
+toastMessage.classList.remove('translate-y-10', 'opacity-0');
+toastMessage.classList.add('translate-y-0', 'opacity-100');
+updateControlPanelVisibility();
+}
+
+// アラームを停止して通常画面に戻る
+function stopTimerAndAlarm() {
+stopAlarmLoop();
+isFinished = false;
+
+toastMessage.classList.remove('translate-y-0', 'opacity-100');
+toastMessage.classList.add('translate-y-10', 'opacity-0');
+
+resetTimer();
+}
+
+// 完全リセット
+function resetTimer() {
+if (animationFrameId) {
+cancelAnimationFrame(animationFrameId);
+animationFrameId = null;
+}
+stopAlarmLoop();
+
+isRunning = false;
+isFinished = false;
+remainingSeconds = totalDurationSeconds;
+
+startBtnText.textContent = "開始";
+startBtn.className = "absolute right-0 bottom-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex flex-col items-center justify-center text-emerald-400 hover:bg-emerald-900 transition active:scale-95 focus:outline-none";
+
+enableSelectControls();
+syncSelectsToDuration();
+updateScheduledTime();
+updateTimerVisuals();
+updateControlPanelVisibility();
+}
+
+// 起動時イニシャライズ
+window.onload = () => {
+initApp();
+};
+</script>
 </body>
 </html>
